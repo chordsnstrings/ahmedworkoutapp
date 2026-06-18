@@ -1,18 +1,21 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   CalendarClock,
+  ChevronRight,
   Download,
   FileDown,
   Gauge,
   ListTree,
+  Lock,
   Play,
   Power,
   RotateCcw,
   Square,
   Zap,
 } from 'lucide-react';
+import { SessionChart } from '../components/SessionChart';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
 import { useLive } from '../store/live';
@@ -40,6 +43,7 @@ export function ChargerDetail() {
   const [cfgKey, setCfgKey] = useState('HeartbeatInterval');
   const [cfgValue, setCfgValue] = useState('60');
   const [fwLocation, setFwLocation] = useState('https://firmware.example.com/v2.tar.gz');
+  const [openTx, setOpenTx] = useState<string | null>(null);
 
   const activeReservations = reservations.filter(
     (r) => r.chargerId === id && r.status === 'Active',
@@ -204,30 +208,56 @@ export function ChargerDetail() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-slate-500 uppercase">
+                      <th className="font-semibold px-1 py-2 w-4"></th>
                       <th className="font-semibold px-1 py-2">Started</th>
                       <th className="font-semibold px-1 py-2">Duration</th>
                       <th className="font-semibold px-1 py-2">Energy</th>
+                      <th className="font-semibold px-1 py-2">SoC</th>
                       <th className="font-semibold px-1 py-2 text-right">Cost</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-ink-600/40">
                     {sessions.slice(0, 12).map((tx) => (
-                      <tr key={tx.id}>
-                        <td className="px-1 py-2 text-slate-300">
-                          {dateTime(tx.startedAt)}
-                        </td>
-                        <td className="px-1 py-2 text-slate-400">
-                          {duration(tx.startedAt, tx.endedAt)}
-                        </td>
-                        <td className="px-1 py-2 text-slate-300">{kwh(tx.energyWh)}</td>
-                        <td className="px-1 py-2 text-right">
-                          {tx.state === 'Active' ? (
-                            <span className="text-accent">live</span>
-                          ) : (
-                            money(tx.cost, tx.currency ?? branding.currency)
-                          )}
-                        </td>
-                      </tr>
+                      <Fragment key={tx.id}>
+                        <tr
+                          onClick={() => setOpenTx(openTx === tx.id ? null : tx.id)}
+                          className="cursor-pointer hover:bg-ink-700/40"
+                        >
+                          <td className="px-1 py-2 text-slate-500">
+                            <ChevronRight
+                              size={14}
+                              className={`transition-transform ${openTx === tx.id ? 'rotate-90' : ''}`}
+                            />
+                          </td>
+                          <td className="px-1 py-2 text-slate-300 whitespace-nowrap">
+                            {dateTime(tx.startedAt)}
+                            {tx.signed && (
+                              <Lock size={11} className="inline ml-1 text-emerald-400" />
+                            )}
+                          </td>
+                          <td className="px-1 py-2 text-slate-400">
+                            {duration(tx.startedAt, tx.endedAt)}
+                          </td>
+                          <td className="px-1 py-2 text-slate-300">{kwh(tx.energyWh)}</td>
+                          <td className="px-1 py-2 text-slate-400">
+                            {tx.soc != null ? `${tx.soc}%` : '—'}
+                          </td>
+                          <td className="px-1 py-2 text-right">
+                            {tx.state === 'Active' ? (
+                              <span className="text-accent">live</span>
+                            ) : (
+                              money(tx.cost, tx.currency ?? branding.currency)
+                            )}
+                          </td>
+                        </tr>
+                        {openTx === tx.id && (
+                          <tr>
+                            <td colSpan={6} className="px-1 pb-3">
+                              <SessionChart samples={tx.samples} />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

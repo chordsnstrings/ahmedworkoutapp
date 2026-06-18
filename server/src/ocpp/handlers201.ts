@@ -104,8 +104,12 @@ export const handlers201: HandlerMap = {
     }
 
     if (p.eventType === 'Updated') {
-      store.updateTransactionMeter(txId, energy);
       const power = readSample(p.meterValue, 'Power.Active.Import');
+      const soc = readSample(p.meterValue, 'SoC');
+      const signed = (p.meterValue ?? []).some((mv: any) =>
+        (mv.sampledValue ?? []).some((sv: any) => sv.signedMeterValue),
+      );
+      store.recordMeter(txId, { meterWh: energy, powerW: power ?? undefined, soc, signed });
       if (power != null) store.setConnectorPower(conn.id, evseId, power);
       return {};
     }

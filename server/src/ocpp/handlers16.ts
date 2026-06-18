@@ -96,9 +96,18 @@ export const handlers16: HandlerMap = {
       true,
     );
     const power = readSample(p.meterValue, 'Power.Active.Import');
+    const soc = readSample(p.meterValue, 'SoC');
+    const signed = (p.meterValue ?? []).some((mv: any) =>
+      (mv.sampledValue ?? []).some((sv: any) => sv.format === 'SignedData'),
+    );
     if (power != null) store.setConnectorPower(conn.id, connectorId, power);
     if (energy != null && p.transactionId != null)
-      store.updateTransactionMeter(String(p.transactionId), energy);
+      store.recordMeter(String(p.transactionId), {
+        meterWh: energy,
+        powerW: power,
+        soc,
+        signed,
+      });
     return {};
   },
 

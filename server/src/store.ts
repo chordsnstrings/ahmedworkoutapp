@@ -586,9 +586,28 @@ class Store {
   }
 
   updateTransactionMeter(transactionId: string, meterWh: number) {
+    this.recordMeter(transactionId, { meterWh });
+  }
+
+  /** Record a meter sample (energy + optional power/SoC/signed) on a session. */
+  recordMeter(
+    transactionId: string,
+    input: { meterWh: number; powerW?: number; soc?: number; signed?: boolean },
+  ) {
     const tx = this.transactions.get(transactionId);
     if (!tx || tx.state !== 'Active') return;
-    tx.energyWh = Math.max(0, meterWh - tx.meterStartWh);
+    tx.energyWh = Math.max(0, input.meterWh - tx.meterStartWh);
+    if (input.soc != null) tx.soc = input.soc;
+    if (input.signed) tx.signed = true;
+    if (!tx.samples) tx.samples = [];
+    tx.samples.push({
+      t: new Date().toISOString(),
+      powerW: Math.round(input.powerW ?? 0),
+      energyWh: tx.energyWh,
+      soc: input.soc,
+    });
+    // Keep the series bounded so snapshots stay small.
+    if (tx.samples.length > 180) tx.samples.shift();
     bus.emitEvent({ type: 'transaction', transaction: tx });
   }
 

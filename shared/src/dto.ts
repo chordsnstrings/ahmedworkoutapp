@@ -142,11 +142,24 @@ export interface TransactionDTO {
   meterStartWh: number;
   meterStopWh?: number;
   energyWh: number;
+  /** Latest reported battery state of charge (%). */
+  soc?: number;
+  /** True once at least one signed meter value was received. */
+  signed?: boolean;
+  /** Time series of meter samples captured during the session. */
+  samples?: MeterSample[];
   /** Computed billing fields. */
   tariffId?: string;
   cost?: number;
   currency?: string;
   stopReason?: string;
+}
+
+export interface MeterSample {
+  t: string;
+  powerW: number;
+  energyWh: number;
+  soc?: number;
 }
 
 export type TokenStatus = 'Accepted' | 'Blocked' | 'Expired';

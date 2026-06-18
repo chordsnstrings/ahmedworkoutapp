@@ -40,13 +40,19 @@ function reply(messageId: string, payload: unknown) {
   ws.send(JSON.stringify([MessageType.CALLRESULT, messageId, payload]));
 }
 
+function soc(): number {
+  // Rises from ~40% toward ~95% as energy accumulates.
+  return Math.min(95, Math.round(40 + (meterWh - 12_000) / 600));
+}
+
 function meterValue(): any {
   if (version === '1.6') {
     return {
       timestamp: new Date().toISOString(),
       sampledValue: [
-        { value: String(meterWh), measurand: 'Energy.Active.Import.Register', unit: 'Wh' },
+        { value: String(meterWh), measurand: 'Energy.Active.Import.Register', unit: 'Wh', format: 'SignedData' },
         { value: '7400', measurand: 'Power.Active.Import', unit: 'W' },
+        { value: String(soc()), measurand: 'SoC', unit: 'Percent' },
       ],
     };
   }
@@ -57,8 +63,10 @@ function meterValue(): any {
         value: meterWh,
         measurand: 'Energy.Active.Import.Register',
         unitOfMeasure: { unit: 'Wh' },
+        signedMeterValue: { signedMeterData: 'c2lnbmVk', signingMethod: 'ECDSA', encodingMethod: 'DLMS' },
       },
       { value: 7400, measurand: 'Power.Active.Import', unitOfMeasure: { unit: 'W' } },
+      { value: soc(), measurand: 'SoC', unitOfMeasure: { unit: 'Percent' } },
     ],
   };
 }

@@ -83,6 +83,7 @@ export function Transactions() {
                 <th className="font-semibold px-4 py-3">Started</th>
                 <th className="font-semibold px-4 py-3">Duration</th>
                 <th className="font-semibold px-4 py-3">Energy</th>
+                <th className="font-semibold px-4 py-3">SoC</th>
                 <th className="font-semibold px-4 py-3">Status</th>
                 <th className="font-semibold px-4 py-3 text-right">Cost</th>
               </tr>
@@ -106,6 +107,9 @@ export function Transactions() {
                     {duration(tx.startedAt, tx.endedAt)}
                   </td>
                   <td className="px-4 py-3 text-slate-200">{kwh(tx.energyWh)}</td>
+                  <td className="px-4 py-3 text-slate-400">
+                    {tx.soc != null ? `${tx.soc}%` : '—'}
+                  </td>
                   <td className="px-4 py-3">
                     {tx.state === 'Active' ? (
                       <span className="inline-flex items-center gap-1.5 text-accent text-xs font-medium">
