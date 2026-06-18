@@ -344,6 +344,29 @@ export function createApiRouter() {
     }),
   );
 
+  api.post(
+    '/chargers/:id/local-list/version',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      const version = await conn.getLocalListVersion();
+      store.setLocalListVersion(req.params.id, version);
+      res.json({ version });
+    }),
+  );
+  api.post(
+    '/chargers/:id/local-list/sync',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      const tokens = store.acceptedTokens();
+      const version = (store.getCharger(req.params.id)?.localListVersion ?? 0) + 1;
+      const result = await conn.sendLocalList(version, tokens);
+      store.setLocalListVersion(req.params.id, version);
+      res.json({ version, count: tokens.length, result });
+    }),
+  );
+
   // ---------------------------------------------------------------- alerts
   api.get('/alerts', (_req, res) => res.json(store.listAlerts()));
   api.post('/alerts/ack', (_req, res) => {

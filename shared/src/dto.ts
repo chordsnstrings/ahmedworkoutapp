@@ -67,6 +67,8 @@ export interface ChargerDTO {
   diagnosticsStatus?: string;
   /** Whether the charger is enrolled for ISO 15118 Plug & Charge. */
   plugAndCharge?: boolean;
+  /** Version of the local authorization list installed on the charger. */
+  localListVersion?: number;
 }
 
 export interface ConfigKeyDTO {

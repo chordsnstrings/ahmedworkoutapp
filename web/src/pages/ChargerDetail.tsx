@@ -8,6 +8,7 @@ import {
   Download,
   FileDown,
   Gauge,
+  ListChecks,
   ListTree,
   Lock,
   Play,
@@ -593,6 +594,39 @@ export function ChargerDetail() {
                   Diagnostics: {charger.diagnosticsStatus}
                 </div>
               )}
+            </div>
+
+            <div className="border-t border-ink-600/50 mt-3 pt-3">
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="label">Local auth list</span>
+                <span className="text-xs text-slate-400">
+                  v{charger.localListVersion ?? 0}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  disabled={!online || busy != null}
+                  onClick={() =>
+                    run('Sync local list', () =>
+                      api.post(`/chargers/${id}/local-list/sync`, {}),
+                    )
+                  }
+                  className="btn-ghost justify-center text-xs"
+                >
+                  <ListChecks size={14} /> Push tokens
+                </button>
+                <button
+                  disabled={!online || busy != null}
+                  onClick={() =>
+                    run('Get list version', () =>
+                      api.post(`/chargers/${id}/local-list/version`, {}),
+                    )
+                  }
+                  className="btn-ghost justify-center text-xs"
+                >
+                  Get version
+                </button>
+              </div>
             </div>
           </div>
 

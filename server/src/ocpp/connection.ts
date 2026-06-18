@@ -372,6 +372,39 @@ export class ChargePointConnection {
     });
   }
 
+  async getLocalListVersion(): Promise<number> {
+    const res = await this.call<{ listVersion?: number; versionNumber?: number }>(
+      'GetLocalListVersion',
+      {},
+    );
+    return res.listVersion ?? res.versionNumber ?? 0;
+  }
+
+  /** Push a Full local authorization list (offline auth cache). */
+  async sendLocalList(
+    version: number,
+    tokens: { idTag: string; status: string }[],
+  ) {
+    if (this.version === '1.6') {
+      return this.call('SendLocalList', {
+        listVersion: version,
+        updateType: 'Full',
+        localAuthorizationList: tokens.map((t) => ({
+          idTag: t.idTag,
+          idTagInfo: { status: t.status },
+        })),
+      });
+    }
+    return this.call('SendLocalList', {
+      versionNumber: version,
+      updateType: 'Full',
+      localAuthorizationList: tokens.map((t) => ({
+        idToken: { idToken: t.idTag, type: 'ISO14443' },
+        idTokenInfo: { status: t.status },
+      })),
+    });
+  }
+
   async clearChargingProfile(connectorId?: number) {
     if (this.version === '1.6') {
       return this.call('ClearChargingProfile', connectorId ? { connectorId } : {});

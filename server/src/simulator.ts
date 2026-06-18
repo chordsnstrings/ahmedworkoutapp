@@ -27,6 +27,7 @@ const pending = new Map<string, (payload: any) => void>();
 let meterWh = 12_000;
 let transactionId: string | null = null;
 let meterTimer: NodeJS.Timeout | null = null;
+let localListVersion = 0;
 
 function call(action: string, payload: unknown): Promise<any> {
   const messageId = randomUUID();
@@ -287,6 +288,14 @@ ws.on('message', async (data) => {
       }
       break;
     }
+    case 'GetLocalListVersion':
+      reply(messageId, version === '1.6' ? { listVersion: localListVersion } : { versionNumber: localListVersion });
+      break;
+    case 'SendLocalList':
+      localListVersion = payload.listVersion ?? payload.versionNumber ?? localListVersion + 1;
+      reply(messageId, { status: 'Accepted' });
+      console.log(`📋 Local list updated → v${localListVersion}`);
+      break;
     case 'ReserveNow':
       reply(messageId, { status: 'Accepted' });
       setTimeout(() => sendStatus('Reserved'), 300);

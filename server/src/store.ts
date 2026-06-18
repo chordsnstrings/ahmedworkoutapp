@@ -358,6 +358,16 @@ class Store {
     if (this.chargers.has(chargerId))
       this.upsertCharger(chargerId, { diagnosticsStatus });
   }
+  setLocalListVersion(chargerId: string, localListVersion: number) {
+    if (this.chargers.has(chargerId))
+      this.upsertCharger(chargerId, { localListVersion });
+  }
+  /** Accepted tokens to push as the offline local authorization list. */
+  acceptedTokens() {
+    return this.listTokens()
+      .filter((t) => t.status === 'Accepted')
+      .map((t) => ({ idTag: t.idTag, status: 'Accepted' }));
+  }
 
   setOffline(chargerId: string) {
     const c = this.chargers.get(chargerId);
