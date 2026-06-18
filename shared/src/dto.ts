@@ -298,6 +298,29 @@ export interface AuthResponse {
   user: UserDTO;
 }
 
+/** A driver account with a prepaid wallet and linked RFID tokens. */
+export interface DriverDTO {
+  id: string;
+  name: string;
+  email?: string;
+  group?: string;
+  balance: number;
+  currency: string;
+  /** RFID id-tags linked to this driver. */
+  tokenIds: string[];
+  createdAt: string;
+}
+
+export interface WalletEntryDTO {
+  id: string;
+  driverId: string;
+  at: string;
+  type: 'topup' | 'charge';
+  amount: number;
+  balanceAfter: number;
+  reference?: string;
+}
+
 export type InvoiceStatus = 'pending' | 'paid' | 'refunded';
 
 export interface InvoiceDTO {

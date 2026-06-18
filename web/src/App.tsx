@@ -7,6 +7,7 @@ import { StationMap } from './pages/StationMap';
 import { ChargerDetail } from './pages/ChargerDetail';
 import { Transactions } from './pages/Transactions';
 import { Tokens } from './pages/Tokens';
+import { Drivers } from './pages/Drivers';
 import { Tariffs } from './pages/Tariffs';
 import { LoadGroups } from './pages/LoadGroups';
 import { Energy } from './pages/Energy';
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/energy" element={<Energy />} />
         <Route path="/alerts" element={<Alerts />} />
         <Route path="/access" element={<Tokens />} />
+        <Route path="/drivers" element={<Drivers />} />
         <Route path="/plug-and-charge" element={<PlugAndCharge />} />
         <Route path="/tariffs" element={<Tariffs />} />
         <Route path="/payments" element={<Payments />} />

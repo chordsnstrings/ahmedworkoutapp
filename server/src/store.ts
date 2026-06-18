@@ -9,6 +9,7 @@ import type {
   ConfigKeyDTO,
   ConnectorStatus,
   ContractCertificateDTO,
+  DriverDTO,
   ContractStatus,
   DemandResponseEventDTO,
   InvoiceDTO,
@@ -20,6 +21,7 @@ import type {
   TenantDTO,
   TokenDTO,
   TransactionDTO,
+  WalletEntryDTO,
   WebhookDeliveryDTO,
   WebhookDTO,
 } from '@ocpp/shared';
@@ -45,6 +47,8 @@ class Store {
   private contracts = new Map<string, ContractCertificateDTO>();
   private webhooks = new Map<string, WebhookDTO>();
   private deliveries: WebhookDeliveryDTO[] = [];
+  private drivers = new Map<string, DriverDTO>();
+  private wallet: WalletEntryDTO[] = [];
   private alerts: AlertDTO[] = [];
   private logs: LogEntryDTO[] = [];
   private ocppReservationSeq = 1000;
@@ -102,6 +106,17 @@ class Store {
         createdAt: now,
       });
     }
+
+    this.drivers.set('drv-demo', {
+      id: 'drv-demo',
+      name: 'Alex Driver',
+      email: 'alex@example.com',
+      group: 'public',
+      balance: 50,
+      currency: config.defaultCurrency,
+      tokenIds: ['RFID-0001'],
+      createdAt: now,
+    });
 
     for (const c of [
       { emaid: 'DE-8AA-CA12B34-9', holder: 'Demo EV (BMW)' },
@@ -661,7 +676,10 @@ class Store {
     tx.stopReason = input.reason;
     tx.cost = this.computeCost(tx);
     this.transactions.set(tx.id, tx);
-    if ((tx.cost ?? 0) > 0) this.createInvoice(tx);
+    if ((tx.cost ?? 0) > 0) {
+      this.createInvoice(tx);
+      this.chargeWalletForSession(tx);
+    }
     bus.emitEvent({ type: 'transaction', transaction: tx });
     this.pushAnalytics();
     return tx;
@@ -962,6 +980,72 @@ class Store {
     return [...this.partners.values()].find((p) => p.tokenIn === token);
   }
 
+  // ------------------------------------------------ drivers & wallets
+  listDrivers() {
+    return [...this.drivers.values()];
+  }
+  getDriver(id: string) {
+    return this.drivers.get(id);
+  }
+  upsertDriver(input: Partial<DriverDTO> & { name: string; id?: string }): DriverDTO {
+    const id = input.id ?? randomUUID();
+    const existing = this.drivers.get(id);
+    const driver: DriverDTO = {
+      id,
+      name: input.name,
+      email: input.email ?? existing?.email,
+      group: input.group ?? existing?.group,
+      balance: input.balance ?? existing?.balance ?? 0,
+      currency: input.currency ?? existing?.currency ?? this.branding.currency,
+      tokenIds: input.tokenIds ?? existing?.tokenIds ?? [],
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
+    };
+    this.drivers.set(id, driver);
+    return driver;
+  }
+  deleteDriver(id: string) {
+    return this.drivers.delete(id);
+  }
+  topUpDriver(id: string, amount: number): DriverDTO | undefined {
+    const d = this.drivers.get(id);
+    if (!d) return;
+    d.balance = Math.round((d.balance + amount) * 100) / 100;
+    this.addWalletEntry(id, 'topup', amount, d.balance, 'Account top-up');
+    return d;
+  }
+  driverForTag(idTag?: string) {
+    if (!idTag) return undefined;
+    return [...this.drivers.values()].find((d) => d.tokenIds.includes(idTag));
+  }
+  private addWalletEntry(
+    driverId: string,
+    type: WalletEntryDTO['type'],
+    amount: number,
+    balanceAfter: number,
+    reference?: string,
+  ) {
+    this.wallet.unshift({
+      id: randomUUID(),
+      driverId,
+      at: new Date().toISOString(),
+      type,
+      amount: Math.round(amount * 100) / 100,
+      balanceAfter,
+      reference,
+    });
+    if (this.wallet.length > 500) this.wallet.pop();
+  }
+  listWallet(driverId?: string) {
+    return driverId ? this.wallet.filter((w) => w.driverId === driverId) : this.wallet;
+  }
+  /** Deduct a session cost from the owning driver's wallet, if any. */
+  private chargeWalletForSession(tx: TransactionDTO) {
+    const driver = this.driverForTag(tx.idTag);
+    if (!driver || !tx.cost) return;
+    driver.balance = Math.round((driver.balance - tx.cost) * 100) / 100;
+    this.addWalletEntry(driver.id, 'charge', -tx.cost, driver.balance, `Session ${tx.id}`);
+  }
+
   // ---------------------------------------------------- webhooks (notify)
   listWebhooks() {
     return [...this.webhooks.values()];
@@ -1095,6 +1179,8 @@ class Store {
       reservations: [...this.reservations.values()],
       tenants: [...this.tenants.values()],
       webhooks: [...this.webhooks.values()],
+      drivers: [...this.drivers.values()],
+      wallet: this.wallet,
       alerts: this.alerts,
       audit: this.audit,
     };
@@ -1122,6 +1208,8 @@ class Store {
     fill(this.reservations, s.reservations ?? [], (r) => r.id);
     if (s.tenants?.length) fill(this.tenants, s.tenants, (t) => t.id);
     fill(this.webhooks, s.webhooks ?? [], (w) => w.id);
+    fill(this.drivers, s.drivers ?? [], (d) => d.id);
+    this.wallet = s.wallet ?? [];
     this.alerts = s.alerts ?? [];
     this.audit = s.audit ?? [];
     // Reconnecting chargers are offline until they boot again.

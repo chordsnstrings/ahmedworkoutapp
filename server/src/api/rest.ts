@@ -572,6 +572,25 @@ export function createApiRouter() {
     res.json(store.getCharger(req.params.id) ?? {});
   }));
 
+  // ------------------------------------------------- drivers & wallets
+  api.get('/drivers', (_req, res) => res.json(store.listDrivers()));
+  api.post('/drivers', h((req, res) => res.status(201).json(store.upsertDriver(req.body))));
+  api.put('/drivers/:id', h((req, res) =>
+    res.json(store.upsertDriver({ ...req.body, id: req.params.id })),
+  ));
+  api.delete('/drivers/:id', (req, res) => {
+    store.deleteDriver(req.params.id);
+    res.status(204).end();
+  });
+  api.post('/drivers/:id/topup', h((req, res) => {
+    const d = store.topUpDriver(req.params.id, Number(req.body.amount ?? 0));
+    if (!d) return res.status(404).json({ error: 'Not found' });
+    res.json(d);
+  }));
+  api.get('/drivers/:id/wallet', (req, res) =>
+    res.json(store.listWallet(req.params.id)),
+  );
+
   // ---------------------------------------------------- tokens (RFID/access)
   api.get('/tokens', (_req, res) => res.json(store.listTokens()));
   api.post(
