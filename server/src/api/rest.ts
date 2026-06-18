@@ -307,6 +307,43 @@ export function createApiRouter() {
     }),
   );
 
+  api.post(
+    '/chargers/:id/charging-profile',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      res.json(
+        await conn.setChargingSchedule(
+          Number(req.body.connectorId),
+          req.body.periods ?? [],
+          req.body.unit ?? 'A',
+          req.body.purpose,
+        ),
+      );
+    }),
+  );
+  api.post(
+    '/chargers/:id/clear-profile',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      res.json(await conn.clearChargingProfile(req.body.connectorId));
+    }),
+  );
+  api.post(
+    '/chargers/:id/composite-schedule',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      res.json(
+        await conn.getCompositeSchedule(
+          Number(req.body.connectorId ?? 1),
+          Number(req.body.duration ?? 86400),
+        ),
+      );
+    }),
+  );
+
   // ---------------------------------------------------------------- alerts
   api.get('/alerts', (_req, res) => res.json(store.listAlerts()));
   api.post('/alerts/ack', (_req, res) => {

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   CalendarClock,
+  CalendarRange,
   ChevronRight,
   Download,
   FileDown,
@@ -16,6 +17,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { SessionChart } from '../components/SessionChart';
+import { ScheduleChart } from '../components/ScheduleChart';
 import { api } from '../lib/api';
 import { useAuth } from '../store/auth';
 import { useLive } from '../store/live';
@@ -44,6 +46,12 @@ export function ChargerDetail() {
   const [cfgValue, setCfgValue] = useState('60');
   const [fwLocation, setFwLocation] = useState('https://firmware.example.com/v2.tar.gz');
   const [openTx, setOpenTx] = useState<string | null>(null);
+  const [periods, setPeriods] = useState([
+    { hour: 0, limit: 32 },
+    { hour: 8, limit: 16 },
+    { hour: 18, limit: 32 },
+  ]);
+  const [composite, setComposite] = useState<{ startPeriod: number; limit: number }[] | null>(null);
 
   const activeReservations = reservations.filter(
     (r) => r.chargerId === id && r.status === 'Active',
@@ -586,6 +594,92 @@ export function ChargerDetail() {
                 </div>
               )}
             </div>
+          </div>
+
+          <div className={`card p-4 sm:p-5 ${readOnly ? 'hidden' : ''}`}>
+            <h2 className="font-semibold text-white mb-3">Smart charging schedule</h2>
+            <div className="space-y-2">
+              {periods.map((p, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 w-10">{p.hour}:00</span>
+                  <input
+                    type="number"
+                    value={p.limit}
+                    onChange={(e) => {
+                      const next = [...periods];
+                      next[i] = { ...p, limit: Number(e.target.value) };
+                      setPeriods(next);
+                    }}
+                    className="input py-1 flex-1"
+                  />
+                  <span className="text-xs text-slate-500">A</span>
+                  <button
+                    onClick={() => setPeriods(periods.filter((_, j) => j !== i))}
+                    className="text-slate-500 hover:text-red-300"
+                  >
+                    <Square size={12} />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() =>
+                  setPeriods([
+                    ...periods,
+                    { hour: (periods.at(-1)?.hour ?? 0) + 6, limit: 16 },
+                  ])
+                }
+                className="text-xs text-accent hover:underline"
+              >
+                + add period
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 mt-3">
+              <button
+                disabled={!online || busy != null}
+                onClick={() =>
+                  run('Set schedule', () =>
+                    api.post(`/chargers/${id}/charging-profile`, {
+                      connectorId,
+                      unit: 'A',
+                      periods: periods.map((p) => ({
+                        startPeriod: p.hour * 3600,
+                        limit: p.limit,
+                      })),
+                    }),
+                  )
+                }
+                className="btn-ghost justify-center text-xs"
+              >
+                <CalendarRange size={14} /> Apply
+              </button>
+              <button
+                disabled={!online || busy != null}
+                onClick={() =>
+                  run('Clear profiles', () => api.post(`/chargers/${id}/clear-profile`, {}))
+                }
+                className="btn-ghost justify-center text-xs"
+              >
+                Clear
+              </button>
+              <button
+                disabled={!online || busy != null}
+                onClick={() =>
+                  run('Composite schedule', async () => {
+                    const r: any = await api.post(`/chargers/${id}/composite-schedule`, {
+                      connectorId,
+                    });
+                    const sched = r.chargingSchedule ?? r.schedule;
+                    setComposite(sched?.chargingSchedulePeriod ?? null);
+                    return r;
+                  })
+                }
+                className="btn-ghost justify-center text-xs"
+              >
+                Composite
+              </button>
+            </div>
+            {composite && <ScheduleChart periods={composite} />}
           </div>
         </div>
       </div>

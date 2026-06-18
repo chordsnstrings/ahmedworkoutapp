@@ -333,6 +333,69 @@ export class ChargePointConnection {
     return this.call('CancelReservation', { reservationId });
   }
 
+  /** Apply a multi-period charging schedule (smart charging). */
+  async setChargingSchedule(
+    connectorId: number,
+    periods: { startPeriod: number; limit: number }[],
+    unit: 'A' | 'W' = 'A',
+    purpose = 'TxDefaultProfile',
+  ) {
+    const profileId = connectorId * 100 + 7;
+    if (this.version === '1.6') {
+      return this.call('SetChargingProfile', {
+        connectorId,
+        csChargingProfiles: {
+          chargingProfileId: profileId,
+          stackLevel: 1,
+          chargingProfilePurpose: purpose,
+          chargingProfileKind: 'Recurring',
+          recurrencyKind: 'Daily',
+          chargingSchedule: {
+            chargingRateUnit: unit,
+            chargingSchedulePeriod: periods,
+          },
+        },
+      });
+    }
+    return this.call('SetChargingProfile', {
+      evseId: connectorId,
+      chargingProfile: {
+        id: profileId,
+        stackLevel: 1,
+        chargingProfilePurpose: purpose,
+        chargingProfileKind: 'Recurring',
+        recurrencyKind: 'Daily',
+        chargingSchedule: [
+          { id: 1, chargingRateUnit: unit, chargingSchedulePeriod: periods },
+        ],
+      },
+    });
+  }
+
+  async clearChargingProfile(connectorId?: number) {
+    if (this.version === '1.6') {
+      return this.call('ClearChargingProfile', connectorId ? { connectorId } : {});
+    }
+    return this.call('ClearChargingProfile', {
+      chargingProfileCriteria: connectorId ? { evseId: connectorId } : {},
+    });
+  }
+
+  async getCompositeSchedule(connectorId: number, durationSec = 86400) {
+    if (this.version === '1.6') {
+      return this.call('GetCompositeSchedule', {
+        connectorId,
+        duration: durationSec,
+        chargingRateUnit: 'A',
+      });
+    }
+    return this.call('GetCompositeSchedule', {
+      evseId: connectorId,
+      duration: durationSec,
+      chargingRateUnit: 'A',
+    });
+  }
+
   async triggerMessage(requestedMessage: string, connectorId?: number) {
     if (this.version === '1.6') {
       return this.call('TriggerMessage', {

@@ -258,6 +258,35 @@ ws.on('message', async (data) => {
     case 'SetChargingProfile':
       reply(messageId, { status: 'Accepted' });
       break;
+    case 'ClearChargingProfile':
+      reply(messageId, { status: 'Accepted' });
+      break;
+    case 'GetCompositeSchedule': {
+      const schedule = {
+        chargingRateUnit: 'A',
+        duration: payload.duration ?? 86400,
+        chargingSchedulePeriod: [
+          { startPeriod: 0, limit: 32 },
+          { startPeriod: 28800, limit: 16 },
+          { startPeriod: 64800, limit: 32 },
+        ],
+      };
+      if (version === '1.6') {
+        reply(messageId, {
+          status: 'Accepted',
+          connectorId: payload.connectorId ?? 1,
+          scheduleStart: new Date().toISOString(),
+          chargingSchedule: schedule,
+        });
+      } else {
+        reply(messageId, {
+          status: 'Accepted',
+          evseId: payload.evseId ?? 1,
+          schedule: { ...schedule, id: 1 },
+        });
+      }
+      break;
+    }
     case 'ReserveNow':
       reply(messageId, { status: 'Accepted' });
       setTimeout(() => sendStatus('Reserved'), 300);
