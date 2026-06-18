@@ -231,6 +231,32 @@ export interface InvoiceDTO {
   paidAt?: string;
 }
 
+/** An OCPI 2.2.1 roaming partner (eMSP or hub) we exchange data with. */
+export interface RoamingPartnerDTO {
+  id: string;
+  name: string;
+  role: 'EMSP' | 'HUB' | 'CPO';
+  countryCode: string;
+  partyId: string;
+  /** Token the partner presents when calling our OCPI endpoints. */
+  tokenIn: string;
+  /** The partner's OCPI versions URL (for outbound calls). */
+  versionsUrl?: string;
+  status: 'registered' | 'pending';
+  registeredAt: string;
+}
+
+export interface RoamingInfoDTO {
+  versionsUrl: string;
+  versionDetailUrl: string;
+  countryCode: string;
+  partyId: string;
+  locations: number;
+  sessions: number;
+  cdrs: number;
+  partners: number;
+}
+
 export interface AnalyticsDTO {
   chargersTotal: number;
   chargersOnline: number;

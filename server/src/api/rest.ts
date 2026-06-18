@@ -1,6 +1,8 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
+import { config } from '../config';
 import { store } from '../store';
 import { connections } from '../ocpp/server';
+import { transactionToCdr } from '../ocpi/mappers';
 import {
   authMiddleware,
   deleteUser,
@@ -102,6 +104,38 @@ export function createApiRouter() {
   // From here down, any state-changing request requires operator role.
   api.use((req, res, next) =>
     req.method === 'GET' ? next() : operator(req, res, next),
+  );
+
+  // ----------------------------------------------------------- roaming (OCPI)
+  const ocpiBase = `${config.publicUrl.replace(/\/$/, '')}/ocpi`;
+  api.get('/roaming/info', (_req, res) => {
+    const txs = store.listTransactions();
+    res.json({
+      versionsUrl: `${ocpiBase}/versions`,
+      versionDetailUrl: `${ocpiBase}/2.2.1`,
+      countryCode: config.ocpiCountryCode,
+      partyId: config.ocpiPartyId,
+      locations: store.listChargers().length,
+      sessions: txs.length,
+      cdrs: txs.filter((t) => t.state === 'Ended').length,
+      partners: store.listPartners().length,
+    });
+  });
+  api.get('/roaming/partners', (_req, res) => res.json(store.listPartners()));
+  api.post('/roaming/partners', operator, h((req, res) =>
+    res.status(201).json(store.registerPartner(req.body)),
+  ));
+  api.delete('/roaming/partners/:id', operator, (req, res) => {
+    store.deletePartner(req.params.id);
+    res.status(204).end();
+  });
+  api.get('/roaming/cdrs', (_req, res) =>
+    res.json(
+      store
+        .listTransactions()
+        .filter((t) => t.state === 'Ended')
+        .map(transactionToCdr),
+    ),
   );
 
   // --------------------------------------------------------------- tenants

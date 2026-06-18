@@ -12,6 +12,7 @@ import type {
   LoadGroupDTO,
   LogEntryDTO,
   ReservationDTO,
+  RoamingPartnerDTO,
   TariffDTO,
   TenantDTO,
   TokenDTO,
@@ -34,6 +35,7 @@ class Store {
   private loadGroups = new Map<string, LoadGroupDTO>();
   private reservations = new Map<string, ReservationDTO>();
   private invoices = new Map<string, InvoiceDTO>();
+  private partners = new Map<string, RoamingPartnerDTO>();
   private alerts: AlertDTO[] = [];
   private logs: LogEntryDTO[] = [];
   private ocppReservationSeq = 1000;
@@ -718,6 +720,40 @@ class Store {
       ? this.logs.filter((e) => e.chargerId === chargerId)
       : this.logs;
     return [...l].reverse();
+  }
+
+  // --------------------------------------------------------- roaming (OCPI)
+  listPartners() {
+    return [...this.partners.values()];
+  }
+  registerPartner(input: {
+    name: string;
+    role?: RoamingPartnerDTO['role'];
+    countryCode?: string;
+    partyId?: string;
+    versionsUrl?: string;
+  }): RoamingPartnerDTO {
+    const partner: RoamingPartnerDTO = {
+      id: randomUUID(),
+      name: input.name,
+      role: input.role ?? 'EMSP',
+      countryCode: input.countryCode ?? 'DE',
+      partyId: input.partyId ?? 'EMP',
+      tokenIn: randomUUID().replace(/-/g, ''),
+      versionsUrl: input.versionsUrl,
+      status: 'registered',
+      registeredAt: new Date().toISOString(),
+    };
+    this.partners.set(partner.id, partner);
+    return partner;
+  }
+  deletePartner(id: string) {
+    return this.partners.delete(id);
+  }
+  /** A partner is authorised if any registered partner owns the bearer token. */
+  partnerByToken(token: string | undefined) {
+    if (!token) return undefined;
+    return [...this.partners.values()].find((p) => p.tokenIn === token);
   }
 
   // -------------------------------------------------------------- analytics

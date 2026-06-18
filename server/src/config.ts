@@ -21,4 +21,9 @@ export const config = {
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
   /** Model used by the ops assistant. */
   assistantModel: process.env.ASSISTANT_MODEL ?? 'claude-opus-4-8',
+  /** Public base URL used to advertise OCPI endpoints. */
+  publicUrl: process.env.PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 3000}`,
+  /** OCPI party identity for this CPO. */
+  ocpiCountryCode: process.env.OCPI_COUNTRY_CODE ?? 'US',
+  ocpiPartyId: process.env.OCPI_PARTY_ID ?? 'VLT',
 };

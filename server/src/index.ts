@@ -5,12 +5,14 @@ import { config } from './config';
 import { log } from './logger';
 import { createApiRouter } from './api/rest';
 import { startLoadManager } from './load';
+import { createOcpiRouter } from './ocpi/server';
 import { attachOcppServer } from './ocpp/server';
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use('/api', createApiRouter());
+app.use('/ocpi', createOcpiRouter());
 
 app.get('/', (_req, res) =>
   res.json({

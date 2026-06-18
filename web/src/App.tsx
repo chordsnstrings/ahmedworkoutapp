@@ -9,6 +9,7 @@ import { Tariffs } from './pages/Tariffs';
 import { LoadGroups } from './pages/LoadGroups';
 import { Alerts } from './pages/Alerts';
 import { Payments } from './pages/Payments';
+import { Roaming } from './pages/Roaming';
 import { Assistant } from './pages/Assistant';
 import { Users } from './pages/Users';
 import { Logs } from './pages/Logs';
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/access" element={<Tokens />} />
         <Route path="/tariffs" element={<Tariffs />} />
         <Route path="/payments" element={<Payments />} />
+        <Route path="/roaming" element={<Roaming />} />
         <Route path="/assistant" element={<Assistant />} />
         <Route path="/users" element={<Users />} />
         <Route path="/logs" element={<Logs />} />

@@ -33,6 +33,17 @@ web dashboard for Charge Point Operators (CPOs).
   gateway (or real Stripe PaymentIntents when `STRIPE_SECRET_KEY` is set), and
   **ad-hoc guest charging** through a public QR page (`/charge/<id>`).
 
+**Roaming (OCPI 2.2.1)**
+- A CPO-facing OCPI module exposing version discovery, credentials, **Locations**
+  (chargers → EVSEs/connectors), **Sessions**, **CDRs**, and real-time **Token**
+  authorization — all behind OCPI `Authorization: Token …` partner auth.
+- Register eMSP / hub partners from the dashboard to mint their access token;
+  view shared locations, generated CDRs (with VAT), and your OCPI endpoint URLs.
+
+**OCPP remote management**
+- Remote configuration (GetConfiguration/ChangeConfiguration · GetVariables/SetVariables),
+  firmware OTA (UpdateFirmware) with live status, and diagnostics/log upload.
+
 **AI ops assistant**
 - A Claude-powered chat (`/assistant`) that answers natural-language questions about
   the network and traces root causes for faults/offline chargers, using a live
