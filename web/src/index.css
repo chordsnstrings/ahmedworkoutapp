@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink-900 text-slate-200 font-sans antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-ink-600 rounded;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+@layer components {
+  .card {
+    @apply bg-ink-800 border border-ink-600/60 rounded-xl;
+  }
+  .btn {
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium
+      transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-ink-900 hover:bg-cyan-300;
+  }
+  .btn-ghost {
+    @apply btn bg-ink-600/40 hover:bg-ink-600 text-slate-200;
+  }
+  .btn-danger {
+    @apply btn bg-red-500/15 text-red-300 hover:bg-red-500/25;
+  }
+  .input {
+    @apply bg-ink-900 border border-ink-600 rounded-lg px-3 py-2 text-sm
+      text-slate-100 outline-none focus:border-accent w-full;
+  }
+  .label {
+    @apply text-xs uppercase tracking-wide text-slate-400 font-semibold;
+  }
+}

@@ -1,0 +1,189 @@
+import { Router, type NextFunction, type Request, type Response } from 'express';
+import { config } from '../config';
+import { store } from '../store';
+import { connections } from '../ocpp/server';
+import { sseHandler } from './sse';
+
+/** Wrap async handlers so rejections become 500s instead of crashing. */
+const h =
+  (fn: (req: Request, res: Response) => Promise<unknown> | unknown) =>
+  (req: Request, res: Response, next: NextFunction) =>
+    Promise.resolve(fn(req, res)).catch(next);
+
+/** Look up a live connection or send 409 if the charger is offline. */
+function requireConnection(req: Request, res: Response) {
+  const conn = connections.get(req.params.id);
+  if (!conn) {
+    res.status(409).json({ error: 'Charge point is offline' });
+    return null;
+  }
+  return conn;
+}
+
+export function createApiRouter() {
+  const api = Router();
+
+  // Optional API-key gate (skips the SSE stream which uses query auth).
+  api.use((req, res, next) => {
+    if (!config.apiKey) return next();
+    const key = req.header('x-api-key') ?? req.query.apiKey;
+    if (key !== config.apiKey)
+      return res.status(401).json({ error: 'Invalid API key' });
+    next();
+  });
+
+  // ----------------------------------------------------------- live + meta
+  api.get('/events', sseHandler);
+  api.get('/health', (_req, res) => res.json({ ok: true }));
+
+  api.get('/branding', (_req, res) => res.json(store.branding));
+  api.put(
+    '/branding',
+    h((req, res) => {
+      store.branding = { ...store.branding, ...req.body };
+      res.json(store.branding);
+    }),
+  );
+
+  api.get('/analytics', (_req, res) => res.json(store.analytics()));
+
+  // --------------------------------------------------------------- tenants
+  api.get('/tenants', (_req, res) => res.json(store.listTenants()));
+  api.post(
+    '/chargers/:id/tenant',
+    h((req, res) => {
+      store.assignTenant(req.params.id, req.body.tenantId);
+      res.json(store.getCharger(req.params.id) ?? {});
+    }),
+  );
+
+  // -------------------------------------------------------------- chargers
+  api.get('/chargers', (_req, res) => res.json(store.listChargers()));
+  api.get('/chargers/:id', (req, res) => {
+    const c = store.getCharger(req.params.id);
+    if (!c) return res.status(404).json({ error: 'Not found' });
+    res.json(c);
+  });
+
+  api.post(
+    '/chargers/:id/remote-start',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      const result = await conn.remoteStart(
+        req.body.idTag ?? 'RFID-0001',
+        req.body.connectorId,
+      );
+      res.json(result);
+    }),
+  );
+
+  api.post(
+    '/chargers/:id/remote-stop',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      res.json(await conn.remoteStop(String(req.body.transactionId)));
+    }),
+  );
+
+  api.post(
+    '/chargers/:id/reset',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      res.json(await conn.reset(req.body.type === 'Hard' ? 'Hard' : 'Soft'));
+    }),
+  );
+
+  api.post(
+    '/chargers/:id/availability',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      res.json(
+        await conn.changeAvailability(
+          Number(req.body.connectorId),
+          Boolean(req.body.operative),
+        ),
+      );
+    }),
+  );
+
+  api.post(
+    '/chargers/:id/power-limit',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      const limitA = Number(req.body.limitA);
+      const result = await conn.setPowerLimit(
+        Number(req.body.connectorId),
+        limitA,
+      );
+      store.upsertCharger(req.params.id, { powerLimitA: limitA });
+      res.json(result);
+    }),
+  );
+
+  api.post(
+    '/chargers/:id/trigger',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      res.json(
+        await conn.triggerMessage(
+          req.body.requestedMessage,
+          req.body.connectorId,
+        ),
+      );
+    }),
+  );
+
+  // ---------------------------------------------------------- transactions
+  api.get('/transactions', (_req, res) => res.json(store.listTransactions()));
+
+  // ----------------------------------------------------------------- logs
+  api.get('/logs', (req, res) =>
+    res.json(store.listLogs(req.query.chargerId as string | undefined)),
+  );
+
+  // ---------------------------------------------------- tokens (RFID/access)
+  api.get('/tokens', (_req, res) => res.json(store.listTokens()));
+  api.post(
+    '/tokens',
+    h((req, res) => res.status(201).json(store.upsertToken(req.body))),
+  );
+  api.put(
+    '/tokens/:idTag',
+    h((req, res) =>
+      res.json(store.upsertToken({ ...req.body, idTag: req.params.idTag })),
+    ),
+  );
+  api.delete('/tokens/:idTag', (req, res) => {
+    store.deleteToken(req.params.idTag);
+    res.status(204).end();
+  });
+
+  // --------------------------------------------------------------- tariffs
+  api.get('/tariffs', (_req, res) => res.json(store.listTariffs()));
+  api.post(
+    '/tariffs',
+    h((req, res) => res.status(201).json(store.upsertTariff(req.body))),
+  );
+  api.put(
+    '/tariffs/:id',
+    h((req, res) =>
+      res.json(store.upsertTariff({ ...req.body, id: req.params.id })),
+    ),
+  );
+  api.delete('/tariffs/:id', (req, res) => {
+    const ok = store.deleteTariff(req.params.id);
+    if (!ok)
+      return res
+        .status(400)
+        .json({ error: 'Cannot delete the default tariff' });
+    res.status(204).end();
+  });
+
+  return api;
+}

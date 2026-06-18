@@ -1,71 +1,95 @@
-# Apex — 90-Day Transformation Tracker
+# OCPP Platform — CSMS + Dashboard
 
-A beautiful, fluid, **offline-first** workout tracker built for a focused 90-day transformation.
-No backend, no sign-up, no server database — **all your data lives on your device** in IndexedDB,
-and the app installs to your phone's home screen as a PWA.
+A self-contained **Central System (CSMS)** for EV charging, speaking **OCPP 1.6J**
+and **OCPP 2.0.1** over WebSocket, with a polished, responsive, **multi-tenant**
+web dashboard for Charge Point Operators (CPOs).
 
-![Apex icon](public/pwa-192x192.png)
+> Charge points connect over OCPP-J; operators monitor and control their network
+> from the dashboard in real time.
 
-## Why it's different
+## Features
 
-- **Guided + flexible.** Follow a periodized 90-day Push/Pull/Legs program that tells you exactly
-  what to train today — then freely swap, add, or remove exercises from a pre-loaded library of
-  ~70 common gym movements.
-- **Fluid logging.** Tap to log a set, see *last session's numbers to beat*, auto-filled weights,
-  and an automatic rest timer that follows you across the app.
-- **Progress that motivates.** A Day-X/90 progress ring, streaks, training-volume and bodyweight
-  charts, automatic personal-record detection with a celebration, and before/after photos.
-- **Yours forever.** Works fully offline. Export/import a JSON backup anytime.
+**Central System (server)**
+- OCPP **1.6J** and **2.0.1** on the same endpoint — version negotiated via WebSocket subprotocol.
+- Inbound handling: BootNotification, Heartbeat, StatusNotification, Authorize,
+  Start/StopTransaction (1.6), TransactionEvent (2.0.1), MeterValues, DataTransfer, FirmwareStatus.
+- Outbound remote control: Remote Start/Stop, Reset (soft/hard), Change Availability,
+  **Set Charging Profile** (dynamic load management / current limiting), Trigger Message.
+- **Access control**: RFID/id-token authorization list (Accepted / Blocked / Expired).
+- **Billing**: per-kWh, per-hour and session-fee tariffs with automatic session costing.
+- **Multi-tenant**: charge points grouped under operators (tenants); data is scoped per operator.
+- Live **Server-Sent-Events** stream + REST API for the dashboard.
+- In-memory store seeded with demo stations and 2 weeks of history (swap for a DB later).
+
+**Dashboard (web)**
+- Overview with at-a-glance KPIs, 14-day energy/revenue chart, "charging now", recent sessions.
+- Charge-point list & detail with live connector status, power, and a full remote-control panel.
+- Sessions ledger with energy, duration and cost.
+- RFID/access management, tariff management, live OCPP message inspector.
+- **White-label** branding (name, accent colour, currency).
+- Fully **responsive** (mobile drawer nav) and installable as a **PWA** (offline shell).
+- Operator switcher in the top bar to scope the whole UI to one tenant.
 
 ## Tech stack
 
 | Concern | Choice |
 |---|---|
-| Framework | React + Vite + TypeScript |
-| Styling | Tailwind CSS (dark, vibrant theme) |
-| Animation | Framer Motion |
-| Local NoSQL store | Dexie.js (IndexedDB) + live queries |
-| Charts | Recharts |
-| Offline / install | vite-plugin-pwa (Workbox) |
-| State | Zustand (active workout & rest timer) |
+| Language | TypeScript everywhere |
+| CSMS | Node.js, `ws` (OCPP-J), Express (REST), SSE |
+| Dashboard | React + Vite, Tailwind CSS, Recharts, lucide-react |
+| Shared types | `@ocpp/shared` workspace package |
+| Tooling | npm workspaces, `tsx` |
 
 ## Getting started
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
+npm run dev          # starts CSMS (:3000) and dashboard (:5173) together
 ```
 
-Build & preview the production PWA:
+Then open <http://localhost:5173>.
+
+Simulate charge points (no hardware needed):
 
 ```bash
-npm run build
-npm run preview
+npm run simulator -- --id CP_SIM_1 --version 1.6
+npm run simulator -- --id CP_SIM_2 --version 2.0.1
 ```
 
-## How the data is stored
+The simulator boots, reports status, and runs a charging session you can watch
+live on the dashboard — and it responds to Remote Start/Stop, Reset, etc.
 
-Everything is a document in IndexedDB via Dexie (see `src/db/`):
+## Connecting a real charge point
 
-- `exercises` — the seeded library + any custom exercises you add
-- `programDays` — the 90-day Push/Pull/Legs template
-- `workouts` / `setLogs` — your sessions and every logged set
-- `bodyStats` / `photos` — bodyweight, measurements, progress photos (stored as Blobs)
-- `personalRecords` — cached PRs per exercise
-- `settings` — units, rest duration, goal, start date
+Point the station's OCPP-J URL at:
 
-Weights are stored canonically in **kg** and displayed in your chosen unit. Estimated 1RM uses the
-Epley formula. Use **Settings → Export backup** to download all of it as JSON.
+```
+ws://<host>:3000/ocpp/<chargePointId>
+```
+
+requesting subprotocol `ocpp1.6` or `ocpp2.0.1`. New stations appear under the
+**Unassigned** operator; assign them to a tenant from the charge-point detail page.
 
 ## Project structure
 
 ```
-src/
-  db/        Dexie schema, seeding, repository (workout operations)
-  data/      Pre-populated exercise library + 90-day program generator
-  lib/       Units, 1RM, streaks, PR detection, dates, backup
-  store/     Zustand stores (rest timer)
-  hooks/     Live-query React hooks
-  components/ ProgressRing, SetRow, RestTimerBar, sheets, etc.
-  screens/   Onboarding, Home, WorkoutPlayer, Library, Progress, History, Settings
+shared/   @ocpp/shared — RPC framing + version-agnostic DTOs
+server/   CSMS: OCPP WebSocket server, handlers (1.6 & 2.0.1), REST API, SSE, store, simulator
+web/      React dashboard (Vite + Tailwind), PWA
 ```
+
+## Configuration (server env)
+
+| Var | Default | Purpose |
+|---|---|---|
+| `PORT` | `3000` | HTTP + OCPP WebSocket port |
+| `OCPP_HEARTBEAT_INTERVAL` | `60` | Heartbeat interval (s) returned to stations |
+| `OCPP_OFFLINE_AFTER_MS` | `90000` | Silence before a charger is marked offline |
+| `API_KEY` | _(empty)_ | If set, dashboard REST requires `x-api-key` |
+| `CURRENCY` | `USD` | Default billing currency |
+
+## Roadmap
+
+Production hardening would add: a real database, authn/authz for operators,
+OCPI 2.2.1 roaming, smart-charging schedules, firmware/diagnostics file transfer,
+and payment-gateway settlement.
