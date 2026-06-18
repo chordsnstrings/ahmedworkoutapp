@@ -505,7 +505,8 @@ class Store {
     };
     this.demandResponse.set(event.id, event);
     bus.emitEvent({ type: 'demandresponse', event });
-    bus.emitEvent({ type: 'loadgroup', group: this.getLoadGroup(event.groupId)! });
+    const group = this.getLoadGroup(event.groupId);
+    if (group) bus.emitEvent({ type: 'loadgroup', group });
     return event;
   }
   cancelDemandResponse(id: string) {
