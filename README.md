@@ -33,6 +33,14 @@ web dashboard for Charge Point Operators (CPOs).
   gateway (or real Stripe PaymentIntents when `STRIPE_SECRET_KEY` is set), and
   **ad-hoc guest charging** through a public QR page (`/charge/<id>`).
 
+**AI ops assistant**
+- A Claude-powered chat (`/assistant`) that answers natural-language questions about
+  the network and traces root causes for faults/offline chargers, using a live
+  snapshot of chargers, alerts, sessions and metrics. Responses stream token-by-token.
+- Uses the official Anthropic SDK with model `claude-opus-4-8` (configurable via
+  `ASSISTANT_MODEL`). Without `ANTHROPIC_API_KEY` it falls back to a deterministic
+  computed briefing, so the feature still works in development.
+
 **Dashboard (web)**
 - Overview with at-a-glance KPIs, 14-day energy/revenue chart, "charging now", recent sessions.
 - Charge-point list & detail with live connector status, power, and a full remote-control panel.
@@ -101,6 +109,8 @@ web/      React dashboard (Vite + Tailwind), PWA
 | `CURRENCY` | `USD` | Default billing currency |
 | `JWT_SECRET` | _(dev default)_ | Secret used to sign dashboard auth tokens — **set in production** |
 | `STRIPE_SECRET_KEY` | _(empty)_ | When set, payments create real Stripe PaymentIntents; otherwise a mock gateway settles instantly |
+| `ANTHROPIC_API_KEY` | _(empty)_ | Enables the Claude-powered ops assistant; without it a local computed briefing is returned |
+| `ASSISTANT_MODEL` | `claude-opus-4-8` | Model used by the ops assistant |
 
 ### Demo accounts
 

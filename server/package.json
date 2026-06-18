@@ -11,6 +11,7 @@
     "simulator": "tsx src/simulator.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.69.0",
     "@ocpp/shared": "*",
     "cors": "^2.8.5",
     "express": "^4.19.2",

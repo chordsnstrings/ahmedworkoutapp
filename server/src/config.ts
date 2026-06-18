@@ -17,4 +17,8 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET ?? 'dev-insecure-secret-change-me',
   /** Optional Stripe secret key. When set, real PaymentIntents are created. */
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? '',
+  /** Anthropic API key for the AI ops assistant. Falls back to a local summary. */
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
+  /** Model used by the ops assistant. */
+  assistantModel: process.env.ASSISTANT_MODEL ?? 'claude-opus-4-8',
 };

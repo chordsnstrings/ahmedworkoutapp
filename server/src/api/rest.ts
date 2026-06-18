@@ -10,6 +10,7 @@ import {
   upsertUser,
 } from '../auth';
 import { checkout } from '../payments';
+import { assistantHandler } from '../assistant';
 import { sseHandler } from './sse';
 
 /** Wrap async handlers so rejections become 500s instead of crashing. */
@@ -94,6 +95,9 @@ export function createApiRouter() {
   );
 
   api.get('/analytics', (_req, res) => res.json(store.analytics()));
+
+  // AI ops assistant (read-only; available to all roles).
+  api.post('/assistant', assistantHandler);
 
   // From here down, any state-changing request requires operator role.
   api.use((req, res, next) =>

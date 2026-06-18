@@ -13,6 +13,7 @@ import {
   Menu,
   PlugZap,
   Settings as SettingsIcon,
+  Sparkles,
   Users as UsersIcon,
   X,
   Zap,
@@ -29,6 +30,7 @@ const NAV: {
   role?: UserRole;
 }[] = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: '/assistant', label: 'Ops Assistant', icon: Sparkles },
   { to: '/chargers', label: 'Charge Points', icon: PlugZap },
   { to: '/transactions', label: 'Sessions', icon: BatteryCharging },
   { to: '/load', label: 'Load Management', icon: Gauge },
