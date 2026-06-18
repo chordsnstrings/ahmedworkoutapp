@@ -13,6 +13,8 @@ import { Payments } from './pages/Payments';
 import { Roaming } from './pages/Roaming';
 import { PlugAndCharge } from './pages/PlugAndCharge';
 import { Assistant } from './pages/Assistant';
+import { Reports } from './pages/Reports';
+import { Audit } from './pages/Audit';
 import { Users } from './pages/Users';
 import { Logs } from './pages/Logs';
 import { Settings } from './pages/Settings';
@@ -34,6 +36,8 @@ export default function App() {
         <Route path="/payments" element={<Payments />} />
         <Route path="/roaming" element={<Roaming />} />
         <Route path="/assistant" element={<Assistant />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/audit" element={<Audit />} />
         <Route path="/users" element={<Users />} />
         <Route path="/logs" element={<Logs />} />
         <Route path="/settings" element={<Settings />} />

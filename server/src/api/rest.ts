@@ -21,6 +21,24 @@ const h =
   (req: Request, res: Response, next: NextFunction) =>
     Promise.resolve(fn(req, res)).catch(next);
 
+/** Render rows to CSV using the given column keys. */
+function toCsv(header: string[], rows: Record<string, unknown>[]): string {
+  const cell = (v: unknown) => {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [
+    header.join(','),
+    ...rows.map((r) => header.map((k) => cell(r[k])).join(',')),
+  ].join('\n');
+}
+
+function sendCsv(res: Response, filename: string, csv: string) {
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(csv);
+}
+
 /** Look up a live connection or send 409 if the charger is offline. */
 function requireConnection(req: Request, res: Response) {
   const conn = connections.get(req.params.id);
@@ -64,6 +82,23 @@ export function createApiRouter() {
   api.use(authMiddleware);
 
   api.get('/auth/me', (req, res) => res.json(req.user));
+
+  // Audit trail: record successful mutating actions by authenticated users.
+  api.use((req, res, next) => {
+    if (req.method !== 'GET' && req.user) {
+      res.on('finish', () => {
+        if (res.statusCode < 400)
+          store.addAudit({
+            user: req.user!.email,
+            role: req.user!.role,
+            action: `${req.method} ${req.path}`,
+            target: req.params?.id ?? '',
+          });
+      });
+    }
+    next();
+  });
+  api.get('/audit', admin, (_req, res) => res.json(store.listAudit()));
 
   // ----------------------------------------------------------- live + meta
   api.get('/events', sseHandler);
@@ -352,26 +387,49 @@ export function createApiRouter() {
 
   // ---------------------------------------------------------- transactions
   api.get('/transactions', (_req, res) => res.json(store.listTransactions()));
-  api.get('/transactions.csv', (_req, res) => {
-    const rows = store.listTransactions();
-    const header = [
-      'id', 'chargerId', 'connectorId', 'idTag', 'state', 'startedAt',
-      'endedAt', 'energyWh', 'cost', 'currency', 'stopReason',
-    ];
-    const csv = [
-      header.join(','),
-      ...rows.map((t) =>
-        header
-          .map((k) => {
-            const v = (t as unknown as Record<string, unknown>)[k] ?? '';
-            return /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v;
-          })
-          .join(','),
+  api.get('/transactions.csv', (_req, res) =>
+    sendCsv(
+      res,
+      'sessions.csv',
+      toCsv(
+        ['id', 'chargerId', 'connectorId', 'idTag', 'state', 'startedAt', 'endedAt', 'energyWh', 'cost', 'currency', 'stopReason'],
+        store.listTransactions() as unknown as Record<string, unknown>[],
       ),
-    ].join('\n');
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="sessions.csv"');
-    res.send(csv);
+    ),
+  );
+  api.get('/invoices.csv', (_req, res) =>
+    sendCsv(
+      res,
+      'invoices.csv',
+      toCsv(
+        ['number', 'transactionId', 'chargerId', 'tenantId', 'amount', 'currency', 'status', 'method', 'createdAt', 'paidAt'],
+        store.listInvoices() as unknown as Record<string, unknown>[],
+      ),
+    ),
+  );
+  api.get('/cdrs.csv', (_req, res) => {
+    const rows = store
+      .listTransactions()
+      .filter((t) => t.state === 'Ended')
+      .map((t) => {
+        const c = transactionToCdr(t);
+        return {
+          id: c.id,
+          location: c.cdr_location.id,
+          start: c.start_date_time,
+          end: c.end_date_time,
+          kwh: c.total_energy,
+          hours: c.total_time,
+          cost_excl_vat: c.total_cost.excl_vat,
+          cost_incl_vat: c.total_cost.incl_vat,
+          currency: c.currency,
+        };
+      });
+    sendCsv(
+      res,
+      'cdrs.csv',
+      toCsv(['id', 'location', 'start', 'end', 'kwh', 'hours', 'cost_excl_vat', 'cost_incl_vat', 'currency'], rows),
+    );
   });
 
   // ----------------------------------------------------------------- logs

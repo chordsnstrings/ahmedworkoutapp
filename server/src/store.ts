@@ -963,6 +963,77 @@ class Store {
     };
   }
 
+  // ------------------------------------------------------------- audit log
+  private audit: {
+    id: string;
+    at: string;
+    user: string;
+    role: string;
+    action: string;
+    target: string;
+  }[] = [];
+
+  addAudit(entry: { user: string; role: string; action: string; target: string }) {
+    this.audit.unshift({ id: randomUUID(), at: new Date().toISOString(), ...entry });
+    if (this.audit.length > 500) this.audit.pop();
+  }
+  listAudit() {
+    return this.audit;
+  }
+
+  // ----------------------------------------------------------- persistence
+  /** Serialise durable state to a plain object for snapshotting. */
+  exportState() {
+    return {
+      version: 1,
+      branding: this.branding,
+      counters: {
+        ocppReservationSeq: this.ocppReservationSeq,
+        invoiceSeq: this.invoiceSeq,
+      },
+      chargers: [...this.chargers.values()],
+      transactions: [...this.transactions.values()],
+      tokens: [...this.tokens.values()],
+      tariffs: [...this.tariffs.values()],
+      contracts: [...this.contracts.values()],
+      partners: [...this.partners.values()],
+      invoices: [...this.invoices.values()],
+      loadGroups: [...this.loadGroups.values()],
+      demandResponse: [...this.demandResponse.values()],
+      reservations: [...this.reservations.values()],
+      tenants: [...this.tenants.values()],
+      alerts: this.alerts,
+      audit: this.audit,
+    };
+  }
+
+  /** Restore durable state from a snapshot (replaces seeded data). */
+  importState(s: ReturnType<Store['exportState']>) {
+    if (!s || s.version !== 1) return;
+    const fill = <T>(map: Map<string, T>, items: T[], key: (t: T) => string) => {
+      map.clear();
+      for (const it of items) map.set(key(it), it);
+    };
+    this.branding = s.branding ?? this.branding;
+    this.ocppReservationSeq = s.counters?.ocppReservationSeq ?? this.ocppReservationSeq;
+    this.invoiceSeq = s.counters?.invoiceSeq ?? this.invoiceSeq;
+    fill(this.chargers, s.chargers ?? [], (c) => c.id);
+    fill(this.transactions, s.transactions ?? [], (t) => t.id);
+    fill(this.tokens, s.tokens ?? [], (t) => t.idTag);
+    fill(this.tariffs, s.tariffs ?? [], (t) => t.id);
+    fill(this.contracts, s.contracts ?? [], (c) => c.emaid);
+    fill(this.partners, s.partners ?? [], (p) => p.id);
+    fill(this.invoices, s.invoices ?? [], (i) => i.id);
+    fill(this.loadGroups, s.loadGroups ?? [], (g) => g.id);
+    fill(this.demandResponse, s.demandResponse ?? [], (d) => d.id);
+    fill(this.reservations, s.reservations ?? [], (r) => r.id);
+    if (s.tenants?.length) fill(this.tenants, s.tenants, (t) => t.id);
+    this.alerts = s.alerts ?? [];
+    this.audit = s.audit ?? [];
+    // Reconnecting chargers are offline until they boot again.
+    for (const c of this.chargers.values()) c.state = 'Offline';
+  }
+
   private analyticsTimer: NodeJS.Timeout | null = null;
   private pushAnalytics() {
     // Debounce so a burst of updates produces a single analytics broadcast.

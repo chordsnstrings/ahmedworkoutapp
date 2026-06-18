@@ -5,8 +5,12 @@ import { config } from './config';
 import { log } from './logger';
 import { createApiRouter } from './api/rest';
 import { startLoadManager } from './load';
+import { startPersistence } from './persistence';
 import { createOcpiRouter } from './ocpi/server';
 import { attachOcppServer } from './ocpp/server';
+
+// Restore persisted state before wiring up routes.
+startPersistence();
 
 const app = express();
 app.use(cors());

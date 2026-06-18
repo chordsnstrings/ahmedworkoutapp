@@ -49,6 +49,21 @@ export const api = {
   del: <T>(p: string) => req<T>('DELETE', p),
 };
 
+/** Fetch a file (with auth) and trigger a browser download. */
+export async function download(path: string, filename: string) {
+  const res = await fetch(BASE + path, {
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+  });
+  if (!res.ok) throw new Error(`Download failed (${res.status})`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function eventsUrl() {
   return authToken
     ? `${BASE}/events?token=${encodeURIComponent(authToken)}`

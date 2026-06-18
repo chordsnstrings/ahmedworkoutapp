@@ -33,6 +33,13 @@ web dashboard for Charge Point Operators (CPOs).
   gateway (or real Stripe PaymentIntents when `STRIPE_SECRET_KEY` is set), and
   **ad-hoc guest charging** through a public QR page (`/charge/<id>`).
 
+**Persistence, audit & reporting**
+- Durable state: the whole domain (chargers, sessions, tokens, tariffs, contracts,
+  partners, invoices, load groups, DR events, users…) is snapshotted to disk and
+  restored on boot, surviving restarts (`DATA_DIR`, default `./data`).
+- **Audit log** of every mutating operator action (admin-only view).
+- **Reports** page with CSV exports for sessions, invoices and OCPI CDRs.
+
 **Energy management (solar · battery · V2G · demand response)**
 - Load groups carry on-site solar, battery and SoC; the DLM rebalances against an
   **effective budget** = nominal + solar + battery − active curtailment.
@@ -135,6 +142,9 @@ web/      React dashboard (Vite + Tailwind), PWA
 | `STRIPE_SECRET_KEY` | _(empty)_ | When set, payments create real Stripe PaymentIntents; otherwise a mock gateway settles instantly |
 | `ANTHROPIC_API_KEY` | _(empty)_ | Enables the Claude-powered ops assistant; without it a local computed briefing is returned |
 | `ASSISTANT_MODEL` | `claude-opus-4-8` | Model used by the ops assistant |
+| `DATA_DIR` | `./data` | Directory for the persisted state snapshot |
+| `PUBLIC_URL` | `http://localhost:3000` | Base URL advertised for OCPI endpoints |
+| `OCPI_COUNTRY_CODE` / `OCPI_PARTY_ID` | `US` / `VLT` | This CPO's OCPI party identity |
 
 ### Demo accounts
 
@@ -146,6 +156,11 @@ web/      React dashboard (Vite + Tailwind), PWA
 
 ## Roadmap
 
-Production hardening would add: a real database, authn/authz for operators,
-OCPI 2.2.1 roaming, smart-charging schedules, firmware/diagnostics file transfer,
-and payment-gateway settlement.
+The original roadmap is now implemented: operator auth/RBAC, payments &
+settlement, dynamic load management with demand response, reservations,
+firmware/diagnostics, OCPI 2.2.1 roaming, ISO 15118 Plug & Charge, an AI ops
+assistant, durable persistence, audit logging and reporting.
+
+Further production hardening would swap the file-snapshot store for Postgres/
+Timescale, add horizontal scaling/HA, OCPP Security Profile 3 (mTLS), a
+driver-facing mobile app, and certified OCPP/OCPI conformance test suites.

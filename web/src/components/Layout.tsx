@@ -14,7 +14,9 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  FileBarChart,
   PlugZap,
+  ScrollText,
   Settings as SettingsIcon,
   Sparkles,
   Users as UsersIcon,
@@ -44,8 +46,10 @@ const NAV: {
   { to: '/tariffs', label: 'Tariffs', icon: CircleDollarSign },
   { to: '/payments', label: 'Payments', icon: CreditCard },
   { to: '/roaming', label: 'Roaming (OCPI)', icon: Globe },
-  { to: '/users', label: 'Users & Roles', icon: UsersIcon, role: 'admin' },
+  { to: '/reports', label: 'Reports', icon: FileBarChart },
   { to: '/logs', label: 'Live OCPP Log', icon: Activity },
+  { to: '/audit', label: 'Audit Log', icon: ScrollText, role: 'admin' },
+  { to: '/users', label: 'Users & Roles', icon: UsersIcon, role: 'admin' },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 

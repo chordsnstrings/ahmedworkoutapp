@@ -41,6 +41,16 @@ export function getUser(id: string): UserDTO | undefined {
   const u = users.get(id);
   return u ? toDTO(u) : undefined;
 }
+
+/** Export full user records (incl. password hashes) for persistence. */
+export function exportUsers(): UserRecord[] {
+  return [...users.values()];
+}
+export function importUsers(records: UserRecord[]) {
+  if (!records?.length) return;
+  users.clear();
+  for (const r of records) users.set(r.id, r);
+}
 export function listUsers(): UserDTO[] {
   return [...users.values()].map(toDTO);
 }
