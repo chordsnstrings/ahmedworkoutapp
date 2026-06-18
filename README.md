@@ -33,6 +33,19 @@ web dashboard for Charge Point Operators (CPOs).
   gateway (or real Stripe PaymentIntents when `STRIPE_SECRET_KEY` is set), and
   **ad-hoc guest charging** through a public QR page (`/charge/<id>`).
 
+**Telemetry, analytics & operations**
+- Per-session meter time series (power, energy, **State of Charge**, signed meter
+  values) with expandable session charts.
+- Analytics page: connector utilization, by-operator and hour-of-day breakdowns,
+  CO₂ avoided, peak power, session averages.
+- OCPP smart-charging profiles (multi-period schedules, ClearChargingProfile,
+  GetCompositeSchedule), local authorization list (offline auth), driver display
+  messages and live cost push.
+- Station **map** view (geolocated chargers), **drivers & prepaid wallets** with
+  automatic session billing, **maintenance tickets** + charger lifecycle, webhook
+  **notifications**, and a CSMS **observability** dashboard (throughput, latency,
+  error rate, connections).
+
 **Persistence, audit & reporting**
 - Durable state: the whole domain (chargers, sessions, tokens, tariffs, contracts,
   partners, invoices, load groups, DR events, users…) is snapshotted to disk and
