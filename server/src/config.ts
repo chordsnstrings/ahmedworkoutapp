@@ -13,4 +13,8 @@ export const config = {
    */
   apiKey: process.env.API_KEY ?? '',
   defaultCurrency: process.env.CURRENCY ?? 'USD',
+  /** Secret used to sign dashboard auth tokens. Set in production. */
+  jwtSecret: process.env.JWT_SECRET ?? 'dev-insecure-secret-change-me',
+  /** Optional Stripe secret key. When set, real PaymentIntents are created. */
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? '',
 };

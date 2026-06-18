@@ -11,6 +11,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { useAuth } from '../store/auth';
 import { useLive } from '../store/live';
 import { dateTime, duration, kwh, money, timeAgo } from '../lib/format';
 import {
@@ -22,6 +23,8 @@ import {
 
 export function ChargerDetail() {
   const { id = '' } = useParams();
+  const { can } = useAuth();
+  const readOnly = !can('operator');
   const { chargers, transactions, reservations, tenants, branding } = useLive();
   const charger = chargers.find((c) => c.id === id);
 
@@ -114,6 +117,7 @@ export function ChargerDetail() {
                 value={
                   <select
                     value={charger.tenantId}
+                    disabled={readOnly}
                     onChange={(e) =>
                       run('Assign operator', () =>
                         api.post(`/chargers/${id}/tenant`, {
@@ -206,7 +210,12 @@ export function ChargerDetail() {
 
         {/* Right: command panel */}
         <div className="space-y-4">
-          <div className="card p-4 sm:p-5">
+          {readOnly && (
+            <div className="card p-4 text-sm text-slate-400">
+              You have read-only access. Remote control requires an operator role.
+            </div>
+          )}
+          <div className={`card p-4 sm:p-5 ${readOnly ? 'hidden' : ''}`}>
             <h2 className="font-semibold text-white mb-3">Remote control</h2>
             {!online && (
               <p className="text-xs text-amber-300 mb-3">
@@ -350,7 +359,7 @@ export function ChargerDetail() {
             </div>
           </div>
 
-          <div className="card p-4 sm:p-5">
+          <div className={`card p-4 sm:p-5 ${readOnly ? 'hidden' : ''}`}>
             <h2 className="font-semibold text-white mb-3">Reservations</h2>
             <div className="flex items-end gap-2">
               <label className="block flex-1">

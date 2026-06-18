@@ -8,6 +8,8 @@ import { Tokens } from './pages/Tokens';
 import { Tariffs } from './pages/Tariffs';
 import { LoadGroups } from './pages/LoadGroups';
 import { Alerts } from './pages/Alerts';
+import { Payments } from './pages/Payments';
+import { Users } from './pages/Users';
 import { Logs } from './pages/Logs';
 import { Settings } from './pages/Settings';
 
@@ -23,6 +25,8 @@ export default function App() {
         <Route path="/alerts" element={<Alerts />} />
         <Route path="/access" element={<Tokens />} />
         <Route path="/tariffs" element={<Tariffs />} />
+        <Route path="/payments" element={<Payments />} />
+        <Route path="/users" element={<Users />} />
         <Route path="/logs" element={<Logs />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />

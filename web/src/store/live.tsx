@@ -104,7 +104,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
 
   // Live stream.
   useEffect(() => {
-    const es = new EventSource(eventsUrl);
+    const es = new EventSource(eventsUrl());
     esRef.current = es;
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);

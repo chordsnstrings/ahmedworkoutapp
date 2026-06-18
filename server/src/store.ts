@@ -7,6 +7,7 @@ import type {
   ChargerDTO,
   ConnectorDTO,
   ConnectorStatus,
+  InvoiceDTO,
   LoadGroupDTO,
   LogEntryDTO,
   ReservationDTO,
@@ -31,9 +32,11 @@ class Store {
   private tenants = new Map<string, TenantDTO>();
   private loadGroups = new Map<string, LoadGroupDTO>();
   private reservations = new Map<string, ReservationDTO>();
+  private invoices = new Map<string, InvoiceDTO>();
   private alerts: AlertDTO[] = [];
   private logs: LogEntryDTO[] = [];
   private ocppReservationSeq = 1000;
+  private invoiceSeq = 1;
 
   /** Per-charger availability accounting for uptime % and fault counts. */
   private health = new Map<
@@ -183,6 +186,20 @@ class Store {
           currency: tariff?.currency ?? config.defaultCurrency,
           stopReason: 'Local',
         });
+        const invoice: InvoiceDTO = {
+          id: randomUUID(),
+          number: `INV-${String(this.invoiceSeq++).padStart(5, '0')}`,
+          transactionId: id,
+          chargerId: charger.id,
+          tenantId: charger.tenantId ?? this.defaultTenantId,
+          amount: cost,
+          currency: tariff?.currency ?? config.defaultCurrency,
+          status: Math.random() > 0.25 ? 'paid' : 'pending',
+          method: 'card',
+          createdAt: end.toISOString(),
+          paidAt: end.toISOString(),
+        };
+        this.invoices.set(invoice.id, invoice);
       }
     }
   }
@@ -461,9 +478,44 @@ class Store {
     tx.stopReason = input.reason;
     tx.cost = this.computeCost(tx);
     this.transactions.set(tx.id, tx);
+    if ((tx.cost ?? 0) > 0) this.createInvoice(tx);
     bus.emitEvent({ type: 'transaction', transaction: tx });
     this.pushAnalytics();
     return tx;
+  }
+
+  // ---------------------------------------------------------------- invoices
+  private createInvoice(tx: TransactionDTO): InvoiceDTO {
+    const charger = this.chargers.get(tx.chargerId);
+    const invoice: InvoiceDTO = {
+      id: randomUUID(),
+      number: `INV-${String(this.invoiceSeq++).padStart(5, '0')}`,
+      transactionId: tx.id,
+      chargerId: tx.chargerId,
+      tenantId: charger?.tenantId ?? this.defaultTenantId,
+      amount: tx.cost ?? 0,
+      currency: tx.currency ?? this.branding.currency,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+    this.invoices.set(invoice.id, invoice);
+    return invoice;
+  }
+  listInvoices() {
+    return [...this.invoices.values()].sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt),
+    );
+  }
+  getInvoice(id: string) {
+    return this.invoices.get(id);
+  }
+  markInvoicePaid(id: string, method: string) {
+    const inv = this.invoices.get(id);
+    if (!inv || inv.status === 'paid') return inv;
+    inv.status = 'paid';
+    inv.method = method;
+    inv.paidAt = new Date().toISOString();
+    return inv;
   }
 
   getTransaction(id: string) {

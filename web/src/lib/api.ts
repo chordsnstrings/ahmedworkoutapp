@@ -1,11 +1,33 @@
 const BASE = '/api';
 
+let authToken: string | null = localStorage.getItem('token');
+let onUnauthorized: (() => void) | null = null;
+
+export function setAuthToken(token: string | null) {
+  authToken = token;
+  if (token) localStorage.setItem('token', token);
+  else localStorage.removeItem('token');
+}
+export function setUnauthorizedHandler(fn: () => void) {
+  onUnauthorized = fn;
+}
+export function getAuthToken() {
+  return authToken;
+}
+
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (body) headers['Content-Type'] = 'application/json';
+  if (authToken) headers.Authorization = `Bearer ${authToken}`;
+
   const res = await fetch(BASE + path, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (res.status === 401) {
+    onUnauthorized?.();
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     let message = text;
@@ -27,4 +49,8 @@ export const api = {
   del: <T>(p: string) => req<T>('DELETE', p),
 };
 
-export const eventsUrl = `${BASE}/events`;
+export function eventsUrl() {
+  return authToken
+    ? `${BASE}/events?token=${encodeURIComponent(authToken)}`
+    : `${BASE}/events`;
+}

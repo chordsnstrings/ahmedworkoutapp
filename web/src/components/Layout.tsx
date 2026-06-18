@@ -5,18 +5,29 @@ import {
   BatteryCharging,
   Bell,
   CircleDollarSign,
+  CreditCard,
   Gauge,
   KeyRound,
   LayoutDashboard,
+  LogOut,
   Menu,
   PlugZap,
   Settings as SettingsIcon,
+  Users as UsersIcon,
   X,
   Zap,
 } from 'lucide-react';
+import type { UserRole } from '@ocpp/shared';
 import { ALL_TENANTS, useLive, useScoped } from '../store/live';
+import { useAuth } from '../store/auth';
 
-const NAV = [
+const NAV: {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  end?: boolean;
+  role?: UserRole;
+}[] = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/chargers', label: 'Charge Points', icon: PlugZap },
   { to: '/transactions', label: 'Sessions', icon: BatteryCharging },
@@ -24,6 +35,8 @@ const NAV = [
   { to: '/alerts', label: 'Alerts', icon: Bell },
   { to: '/access', label: 'Access / RFID', icon: KeyRound },
   { to: '/tariffs', label: 'Tariffs', icon: CircleDollarSign },
+  { to: '/payments', label: 'Payments', icon: CreditCard },
+  { to: '/users', label: 'Users & Roles', icon: UsersIcon, role: 'admin' },
   { to: '/logs', label: 'Live OCPP Log', icon: Activity },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
@@ -60,6 +73,8 @@ function OperatorSwitcher() {
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { branding } = useLive();
+  const { can } = useAuth();
+  const items = NAV.filter((n) => !n.role || can(n.role));
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-2.5 px-5 h-16 border-b border-ink-600/60">
@@ -76,7 +91,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         </div>
       </div>
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {NAV.map(({ to, label, icon: Icon, end }) => (
+        {items.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -124,6 +139,45 @@ function AlertBell() {
         </span>
       )}
     </NavLink>
+  );
+}
+
+function UserMenu() {
+  const { user, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  if (!user) return null;
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 rounded-lg hover:bg-ink-700 px-2 py-1.5"
+      >
+        <span className="grid place-items-center w-7 h-7 rounded-full bg-accent/20 text-accent text-xs font-bold">
+          {user.name.slice(0, 1).toUpperCase()}
+        </span>
+        <span className="hidden sm:block text-left leading-tight">
+          <span className="block text-xs font-medium text-slate-200">{user.name}</span>
+          <span className="block text-[10px] text-slate-500 capitalize">{user.role}</span>
+        </span>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-2 z-50 w-48 card p-1 shadow-xl">
+            <div className="px-3 py-2 border-b border-ink-600/60">
+              <div className="text-sm text-slate-200">{user.name}</div>
+              <div className="text-xs text-slate-500">{user.email}</div>
+            </div>
+            <button
+              onClick={logout}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-slate-300 hover:bg-ink-600/50"
+            >
+              <LogOut size={15} /> Sign out
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -188,6 +242,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
           <AlertBell />
           <OperatorSwitcher />
+          <UserMenu />
         </header>
 
         <main

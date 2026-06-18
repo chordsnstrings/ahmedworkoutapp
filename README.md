@@ -21,6 +21,18 @@ web dashboard for Charge Point Operators (CPOs).
 - Live **Server-Sent-Events** stream + REST API for the dashboard.
 - In-memory store seeded with demo stations and 2 weeks of history (swap for a DB later).
 
+**Operations & monetization**
+- **Dynamic Load Management**: load groups with a kW budget; available current is
+  auto-distributed across charging connectors via SetChargingProfile.
+- **Alerts & uptime**: fault/offline alerts (acknowledge, topbar bell) and a rolling
+  per-charger uptime % / 24h fault count.
+- **Reservations**: OCPP ReserveNow / CancelReservation with expiry and auto-consume.
+- **Dynamic pricing**: time-of-use windows and access-group tariff targeting.
+- **Auth & RBAC**: token login with admin / operator / viewer roles; viewers are read-only.
+- **Payments**: invoices auto-generated for paid sessions, collection via a mock
+  gateway (or real Stripe PaymentIntents when `STRIPE_SECRET_KEY` is set), and
+  **ad-hoc guest charging** through a public QR page (`/charge/<id>`).
+
 **Dashboard (web)**
 - Overview with at-a-glance KPIs, 14-day energy/revenue chart, "charging now", recent sessions.
 - Charge-point list & detail with live connector status, power, and a full remote-control panel.
@@ -85,8 +97,18 @@ web/      React dashboard (Vite + Tailwind), PWA
 | `PORT` | `3000` | HTTP + OCPP WebSocket port |
 | `OCPP_HEARTBEAT_INTERVAL` | `60` | Heartbeat interval (s) returned to stations |
 | `OCPP_OFFLINE_AFTER_MS` | `90000` | Silence before a charger is marked offline |
-| `API_KEY` | _(empty)_ | If set, dashboard REST requires `x-api-key` |
+| `API_KEY` | _(empty)_ | Legacy API-key gate (auth tokens are the primary mechanism) |
 | `CURRENCY` | `USD` | Default billing currency |
+| `JWT_SECRET` | _(dev default)_ | Secret used to sign dashboard auth tokens — **set in production** |
+| `STRIPE_SECRET_KEY` | _(empty)_ | When set, payments create real Stripe PaymentIntents; otherwise a mock gateway settles instantly |
+
+### Demo accounts
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@local` | `admin123` |
+| Operator | `ops@local` | `ops12345` |
+| Viewer | `view@local` | `view1234` |
 
 ## Roadmap
 

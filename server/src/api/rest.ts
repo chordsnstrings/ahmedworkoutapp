@@ -1,7 +1,15 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
-import { config } from '../config';
 import { store } from '../store';
 import { connections } from '../ocpp/server';
+import {
+  authMiddleware,
+  deleteUser,
+  listUsers,
+  login,
+  requireRole,
+  upsertUser,
+} from '../auth';
+import { checkout } from '../payments';
 import { sseHandler } from './sse';
 
 /** Wrap async handlers so rejections become 500s instead of crashing. */
@@ -22,23 +30,63 @@ function requireConnection(req: Request, res: Response) {
 
 export function createApiRouter() {
   const api = Router();
+  const operator = requireRole('operator');
+  const admin = requireRole('admin');
 
-  // Optional API-key gate (skips the SSE stream which uses query auth).
-  api.use((req, res, next) => {
-    if (!config.apiKey) return next();
-    const key = req.header('x-api-key') ?? req.query.apiKey;
-    if (key !== config.apiKey)
-      return res.status(401).json({ error: 'Invalid API key' });
-    next();
-  });
+  // ------------------------------------------------------------------- auth
+  api.post(
+    '/auth/login',
+    h((req, res) => {
+      const result = login(req.body.email ?? '', req.body.password ?? '');
+      if (!result) return res.status(401).json({ error: 'Invalid credentials' });
+      res.json(result);
+    }),
+  );
+
+  // Public guest charging (QR / ad-hoc) — no login required.
+  api.post(
+    '/public/charge/:id',
+    h(async (req, res) => {
+      const conn = connections.get(req.params.id);
+      if (!conn)
+        return res.status(409).json({ error: 'Charge point is offline' });
+      const idTag = `GUEST-${Date.now().toString(36).toUpperCase()}`;
+      store.upsertToken({ idTag, label: 'Guest (ad-hoc)', status: 'Accepted', group: 'guest' });
+      const result = await conn.remoteStart(idTag, Number(req.body.connectorId ?? 1));
+      res.json({ idTag, result });
+    }),
+  );
+
+  // Everything below requires a valid session token.
+  api.use(authMiddleware);
+
+  api.get('/auth/me', (req, res) => res.json(req.user));
 
   // ----------------------------------------------------------- live + meta
   api.get('/events', sseHandler);
   api.get('/health', (_req, res) => res.json({ ok: true }));
 
+  // -------------------------------------------------------------- users (admin)
+  api.get('/users', admin, (_req, res) => res.json(listUsers()));
+  api.post('/users', admin, h((req, res) => res.status(201).json(upsertUser(req.body))));
+  api.put('/users/:id', admin, h((req, res) =>
+    res.json(upsertUser({ ...req.body, id: req.params.id })),
+  ));
+  api.delete('/users/:id', admin, (req, res) => {
+    deleteUser(req.params.id);
+    res.status(204).end();
+  });
+
+  // ----------------------------------------------------------- invoices / pay
+  api.get('/invoices', (_req, res) => res.json(store.listInvoices()));
+  api.post('/payments/checkout/:invoiceId', operator, h(async (req, res) => {
+    res.json(await checkout(req.params.invoiceId));
+  }));
+
   api.get('/branding', (_req, res) => res.json(store.branding));
   api.put(
     '/branding',
+    admin,
     h((req, res) => {
       store.branding = { ...store.branding, ...req.body };
       res.json(store.branding);
@@ -46,6 +94,11 @@ export function createApiRouter() {
   );
 
   api.get('/analytics', (_req, res) => res.json(store.analytics()));
+
+  // From here down, any state-changing request requires operator role.
+  api.use((req, res, next) =>
+    req.method === 'GET' ? next() : operator(req, res, next),
+  );
 
   // --------------------------------------------------------------- tenants
   api.get('/tenants', (_req, res) => res.json(store.listTenants()));

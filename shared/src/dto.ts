@@ -184,6 +184,39 @@ export interface BrandingDTO {
   currency: string;
 }
 
+export type UserRole = 'admin' | 'operator' | 'viewer';
+
+export interface UserDTO {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  /** If set, the user is scoped to a single operator (tenant). */
+  tenantId?: string;
+  createdAt: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: UserDTO;
+}
+
+export type InvoiceStatus = 'pending' | 'paid' | 'refunded';
+
+export interface InvoiceDTO {
+  id: string;
+  number: string;
+  transactionId: string;
+  chargerId: string;
+  tenantId: string;
+  amount: number;
+  currency: string;
+  status: InvoiceStatus;
+  method?: string;
+  createdAt: string;
+  paidAt?: string;
+}
+
 export interface AnalyticsDTO {
   chargersTotal: number;
   chargersOnline: number;
