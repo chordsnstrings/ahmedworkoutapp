@@ -288,6 +288,17 @@ ws.on('message', async (data) => {
       }
       break;
     }
+    case 'SetDisplayMessage':
+      reply(messageId, { status: 'Accepted' });
+      console.log(`🖥️  Display: ${payload.message?.message?.content ?? ''}`);
+      break;
+    case 'ClearDisplayMessage':
+      reply(messageId, { status: 'Accepted' });
+      break;
+    case 'CostUpdated':
+      reply(messageId, {});
+      console.log(`💰 Running cost: ${payload.totalCost}`);
+      break;
     case 'GetLocalListVersion':
       reply(messageId, version === '1.6' ? { listVersion: localListVersion } : { versionNumber: localListVersion });
       break;

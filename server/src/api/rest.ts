@@ -345,6 +345,33 @@ export function createApiRouter() {
   );
 
   api.post(
+    '/chargers/:id/display-message',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      res.json(
+        await conn.setDisplayMessage(
+          String(req.body.content ?? ''),
+          req.body.priority,
+        ),
+      );
+    }),
+  );
+  api.post(
+    '/chargers/:id/cost-update',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      res.json(
+        await conn.costUpdated(
+          String(req.body.transactionId),
+          Number(req.body.cost ?? 0),
+        ),
+      );
+    }),
+  );
+
+  api.post(
     '/chargers/:id/local-list/version',
     h(async (req, res) => {
       const conn = requireConnection(req, res);

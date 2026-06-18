@@ -11,6 +11,7 @@ import {
   ListChecks,
   ListTree,
   Lock,
+  MessageSquare,
   Play,
   Power,
   RotateCcw,
@@ -53,6 +54,7 @@ export function ChargerDetail() {
     { hour: 18, limit: 32 },
   ]);
   const [composite, setComposite] = useState<{ startPeriod: number; limit: number }[] | null>(null);
+  const [displayMsg, setDisplayMsg] = useState('Welcome — tap to start charging');
 
   const activeReservations = reservations.filter(
     (r) => r.chargerId === id && r.status === 'Active',
@@ -714,6 +716,46 @@ export function ChargerDetail() {
               </button>
             </div>
             {composite && <ScheduleChart periods={composite} />}
+          </div>
+
+          <div className={`card p-4 sm:p-5 ${readOnly ? 'hidden' : ''}`}>
+            <h2 className="font-semibold text-white mb-3">Driver display</h2>
+            <input
+              value={displayMsg}
+              onChange={(e) => setDisplayMsg(e.target.value)}
+              placeholder="Message to show on the charger…"
+              className="input"
+            />
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <button
+                disabled={!online || busy != null || !displayMsg.trim()}
+                onClick={() =>
+                  run('Display message', () =>
+                    api.post(`/chargers/${id}/display-message`, {
+                      content: displayMsg,
+                      priority: 'AlwaysFront',
+                    }),
+                  )
+                }
+                className="btn-ghost justify-center text-xs"
+              >
+                <MessageSquare size={14} /> Send
+              </button>
+              <button
+                disabled={!online || busy != null || !activeTx}
+                onClick={() =>
+                  run('Push cost', () =>
+                    api.post(`/chargers/${id}/cost-update`, {
+                      transactionId: activeTx?.id,
+                      cost: activeTx?.cost ?? 0,
+                    }),
+                  )
+                }
+                className="btn-ghost justify-center text-xs"
+              >
+                Push cost
+              </button>
+            </div>
           </div>
         </div>
       </div>

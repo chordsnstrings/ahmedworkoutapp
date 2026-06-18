@@ -372,6 +372,36 @@ export class ChargePointConnection {
     });
   }
 
+  /** Show a message on the charger's driver display. */
+  async setDisplayMessage(content: string, priority = 'NormalCycle') {
+    if (this.version === '1.6') {
+      return this.call('DataTransfer', {
+        vendorId: 'org.openchargealliance.displaymessage',
+        messageId: 'SetDisplayMessage',
+        data: JSON.stringify({ content, priority }),
+      });
+    }
+    return this.call('SetDisplayMessage', {
+      message: {
+        id: Math.floor(Math.random() * 1e6),
+        priority,
+        message: { format: 'UTF8', content },
+      },
+    });
+  }
+
+  /** Push the running total cost for a transaction to the driver display. */
+  async costUpdated(transactionId: string, totalCost: number) {
+    if (this.version === '1.6') {
+      return this.call('DataTransfer', {
+        vendorId: 'org.openchargealliance.costupdated',
+        messageId: 'CostUpdated',
+        data: JSON.stringify({ transactionId, totalCost }),
+      });
+    }
+    return this.call('CostUpdated', { totalCost, transactionId });
+  }
+
   async getLocalListVersion(): Promise<number> {
     const res = await this.call<{ listVersion?: number; versionNumber?: number }>(
       'GetLocalListVersion',
