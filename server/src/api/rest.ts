@@ -182,6 +182,18 @@ export function createApiRouter() {
       res.json(store.getCharger(req.params.id) ?? {});
     }),
   );
+  api.post(
+    '/chargers/:id/location',
+    h((req, res) => {
+      store.setLocation(req.params.id, {
+        lat: req.body.lat != null ? Number(req.body.lat) : undefined,
+        lng: req.body.lng != null ? Number(req.body.lng) : undefined,
+        address: req.body.address,
+        city: req.body.city,
+      });
+      res.json(store.getCharger(req.params.id) ?? {});
+    }),
+  );
 
   // -------------------------------------------------------------- chargers
   api.get('/chargers', (_req, res) => res.json(store.listChargers()));

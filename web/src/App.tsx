@@ -3,6 +3,7 @@ import { Layout } from './components/Layout';
 import { Overview } from './pages/Overview';
 import { Analytics } from './pages/Analytics';
 import { Chargers } from './pages/Chargers';
+import { StationMap } from './pages/StationMap';
 import { ChargerDetail } from './pages/ChargerDetail';
 import { Transactions } from './pages/Transactions';
 import { Tokens } from './pages/Tokens';
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/" element={<Overview />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/chargers" element={<Chargers />} />
+        <Route path="/map" element={<StationMap />} />
         <Route path="/chargers/:id" element={<ChargerDetail />} />
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/load" element={<LoadGroups />} />

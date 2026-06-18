@@ -120,6 +120,14 @@ export function ChargerDetail() {
             <dl className="grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-4 text-sm">
               <Field label="Protocol" value={charger.protocol ? `OCPP ${charger.protocol}` : '—'} />
               <Field label="Serial" value={charger.serialNumber ?? '—'} />
+              <Field
+                label="Location"
+                value={
+                  charger.city
+                    ? `${charger.address ?? ''}${charger.address ? ', ' : ''}${charger.city}`
+                    : '—'
+                }
+              />
               <Field label="Last seen" value={timeAgo(charger.lastSeen)} />
               <Field
                 label="Uptime"

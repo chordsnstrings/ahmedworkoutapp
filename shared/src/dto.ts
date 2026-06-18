@@ -69,6 +69,11 @@ export interface ChargerDTO {
   plugAndCharge?: boolean;
   /** Version of the local authorization list installed on the charger. */
   localListVersion?: number;
+  /** Site location (for the station map and OCPI Locations). */
+  lat?: number;
+  lng?: number;
+  address?: string;
+  city?: string;
 }
 
 export interface ConfigKeyDTO {

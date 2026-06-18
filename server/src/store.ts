@@ -126,6 +126,10 @@ class Store {
         model: 'Terra 184',
         protocol: '2.0.1',
         firmwareVersion: '3.4.1',
+        lat: 40.712,
+        lng: -74.006,
+        address: '120 Broadway',
+        city: 'New York',
         connectors: [
           { connectorId: 1, status: 'Available', updatedAt: new Date().toISOString() },
           { connectorId: 2, status: 'Available', updatedAt: new Date().toISOString() },
@@ -138,6 +142,10 @@ class Store {
         model: 'HYC300',
         protocol: '1.6',
         firmwareVersion: '1.9.0',
+        lat: 40.758,
+        lng: -73.985,
+        address: '1500 Broadway',
+        city: 'New York',
         connectors: [
           { connectorId: 1, status: 'Available', updatedAt: new Date().toISOString() },
         ],
@@ -149,6 +157,10 @@ class Store {
         model: 'Supernova',
         protocol: '1.6',
         firmwareVersion: '2.1.0',
+        lat: 40.689,
+        lng: -73.944,
+        address: '500 Park Pl',
+        city: 'Brooklyn',
         connectors: [
           { connectorId: 1, status: 'Available', updatedAt: new Date().toISOString() },
         ],
@@ -164,6 +176,10 @@ class Store {
         vendor: c.vendor,
         model: c.model,
         firmwareVersion: c.firmwareVersion,
+        lat: c.lat,
+        lng: c.lng,
+        address: c.address,
+        city: c.city,
         lastSeen: new Date(Date.now() - 3_600_000).toISOString(),
       });
     }
@@ -295,6 +311,12 @@ class Store {
   assignTenant(chargerId: string, tenantId: string) {
     if (!this.tenants.has(tenantId) || !this.chargers.has(chargerId)) return;
     this.upsertCharger(chargerId, { tenantId });
+  }
+  setLocation(
+    chargerId: string,
+    loc: { lat?: number; lng?: number; address?: string; city?: string },
+  ) {
+    if (this.chargers.has(chargerId)) this.upsertCharger(chargerId, loc);
   }
 
   setConnectorStatus(

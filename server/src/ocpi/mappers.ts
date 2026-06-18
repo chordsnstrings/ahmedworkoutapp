@@ -38,10 +38,13 @@ export function chargerToLocation(charger: ChargerDTO) {
     id: charger.id,
     publish: true,
     name: `${charger.vendor ?? ''} ${charger.model ?? charger.id}`.trim(),
-    address: 'Unknown',
-    city: 'Unknown',
+    address: charger.address ?? 'Unknown',
+    city: charger.city ?? 'Unknown',
     country: 'USA',
-    coordinates: { latitude: '0.000000', longitude: '0.000000' },
+    coordinates: {
+      latitude: (charger.lat ?? 0).toFixed(6),
+      longitude: (charger.lng ?? 0).toFixed(6),
+    },
     evses: charger.connectors.map((c) => ({
       uid: `${charger.id}-${c.connectorId}`,
       evse_id: `${config.ocpiCountryCode}*${config.ocpiPartyId}*E${charger.id}${c.connectorId}`,
