@@ -12,6 +12,7 @@ import {
   Leaf,
   KeyRound,
   LayoutDashboard,
+  LineChart,
   LogOut,
   Menu,
   FileBarChart,
@@ -35,6 +36,7 @@ const NAV: {
   role?: UserRole;
 }[] = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
+  { to: '/analytics', label: 'Analytics', icon: LineChart },
   { to: '/assistant', label: 'Ops Assistant', icon: Sparkles },
   { to: '/chargers', label: 'Charge Points', icon: PlugZap },
   { to: '/transactions', label: 'Sessions', icon: BatteryCharging },

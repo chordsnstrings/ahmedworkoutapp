@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Overview } from './pages/Overview';
+import { Analytics } from './pages/Analytics';
 import { Chargers } from './pages/Chargers';
 import { ChargerDetail } from './pages/ChargerDetail';
 import { Transactions } from './pages/Transactions';
@@ -24,6 +25,7 @@ export default function App() {
     <Layout>
       <Routes>
         <Route path="/" element={<Overview />} />
+        <Route path="/analytics" element={<Analytics />} />
         <Route path="/chargers" element={<Chargers />} />
         <Route path="/chargers/:id" element={<ChargerDetail />} />
         <Route path="/transactions" element={<Transactions />} />
