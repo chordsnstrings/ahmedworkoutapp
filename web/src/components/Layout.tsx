@@ -57,6 +57,7 @@ const NAV: {
   { to: '/roaming', label: 'Roaming (OCPI)', icon: Globe },
   { to: '/reports', label: 'Reports', icon: FileBarChart },
   { to: '/logs', label: 'Live OCPP Log', icon: Activity },
+  { to: '/observability', label: 'Observability', icon: Gauge },
   { to: '/audit', label: 'Audit Log', icon: ScrollText, role: 'admin' },
   { to: '/notifications', label: 'Notifications', icon: Webhook, role: 'admin' },
   { to: '/users', label: 'Users & Roles', icon: UsersIcon, role: 'admin' },

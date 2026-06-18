@@ -22,6 +22,7 @@ import { Notifications } from './pages/Notifications';
 import { Audit } from './pages/Audit';
 import { Users } from './pages/Users';
 import { Logs } from './pages/Logs';
+import { Observability } from './pages/Observability';
 import { Settings } from './pages/Settings';
 
 export default function App() {
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/users" element={<Users />} />
         <Route path="/logs" element={<Logs />} />
+        <Route path="/observability" element={<Observability />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -6,6 +6,7 @@ import {
   type OcppVersion,
 } from '@ocpp/shared';
 import { log } from '../logger';
+import { metrics } from '../metrics';
 import { store } from '../store';
 import {
   encodeCall,
@@ -27,6 +28,7 @@ interface Pending {
   resolve: (v: unknown) => void;
   reject: (e: unknown) => void;
   timer: NodeJS.Timeout;
+  sentAt: number;
 }
 
 /** One live OCPP-J session with a single charge point. */
@@ -63,6 +65,7 @@ export class ChargePointConnection {
       if (p) {
         clearTimeout(p.timer);
         this.pending.delete(messageId);
+        metrics.recordLatency(Date.now() - p.sentAt);
         p.resolve(payload);
       }
     } else {
@@ -76,6 +79,7 @@ export class ChargePointConnection {
       if (p) {
         clearTimeout(p.timer);
         this.pending.delete(messageId);
+        metrics.recordLatency(Date.now() - p.sentAt);
         p.reject(new OcppError(code as any, description, details));
       }
     }
@@ -125,6 +129,7 @@ export class ChargePointConnection {
         resolve: resolve as (v: unknown) => void,
         reject,
         timer,
+        sentAt: Date.now(),
       });
       this.ws.send(encodeCall(messageId, action, payload));
     });
@@ -146,6 +151,7 @@ export class ChargePointConnection {
     payload: unknown,
   ) {
     log.ocpp(direction, this.id, kind, action);
+    metrics.recordMessage(direction, kind);
     store.addLog({
       chargerId: this.id,
       direction,

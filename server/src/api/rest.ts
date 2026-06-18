@@ -2,6 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import { config } from '../config';
 import { store } from '../store';
 import { connections } from '../ocpp/server';
+import { metrics } from '../metrics';
 import { transactionToCdr } from '../ocpi/mappers';
 import {
   authMiddleware,
@@ -151,6 +152,7 @@ export function createApiRouter() {
   );
 
   api.get('/analytics', (_req, res) => res.json(store.analytics()));
+  api.get('/metrics', (_req, res) => res.json(metrics.snapshot(connections.size)));
 
   // AI ops assistant (read-only; available to all roles).
   api.post('/assistant', assistantHandler);
