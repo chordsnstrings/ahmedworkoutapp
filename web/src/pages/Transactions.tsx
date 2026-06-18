@@ -33,7 +33,15 @@ export function Transactions() {
 
   return (
     <>
-      <PageHeader title="Sessions" subtitle="Charging transactions & billing" />
+      <PageHeader
+        title="Sessions"
+        subtitle="Charging transactions & billing"
+        actions={
+          <a href="/api/transactions.csv" className="btn-ghost" download>
+            Export CSV
+          </a>
+        }
+      />
 
       <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-4">
         <Stat label="Sessions" value={totals.count} />

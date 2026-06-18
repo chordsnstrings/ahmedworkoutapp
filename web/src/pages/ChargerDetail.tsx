@@ -91,6 +91,13 @@ export function ChargerDetail() {
               <Field label="Protocol" value={charger.protocol ? `OCPP ${charger.protocol}` : '—'} />
               <Field label="Serial" value={charger.serialNumber ?? '—'} />
               <Field label="Last seen" value={timeAgo(charger.lastSeen)} />
+              <Field
+                label="Uptime"
+                value={
+                  charger.uptimePct != null ? `${charger.uptimePct}%` : '—'
+                }
+              />
+              <Field label="Faults 24h" value={String(charger.faults24h ?? 0)} />
               <Field label="Boot reason" value={charger.bootReason ?? '—'} />
               <Field
                 label="Power limit"

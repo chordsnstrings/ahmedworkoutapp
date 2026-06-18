@@ -8,9 +8,11 @@ import {
   type ReactNode,
 } from 'react';
 import type {
+  AlertDTO,
   AnalyticsDTO,
   BrandingDTO,
   ChargerDTO,
+  LoadGroupDTO,
   LogEntryDTO,
   ServerEvent,
   TenantDTO,
@@ -25,6 +27,8 @@ interface LiveData {
   chargers: ChargerDTO[];
   transactions: TransactionDTO[];
   logs: LogEntryDTO[];
+  alerts: AlertDTO[];
+  loadGroups: LoadGroupDTO[];
   analytics: AnalyticsDTO | null;
   branding: BrandingDTO;
   setBranding: (b: BrandingDTO) => void;
@@ -47,6 +51,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [chargers, setChargers] = useState<ChargerDTO[]>([]);
   const [transactions, setTransactions] = useState<TransactionDTO[]>([]);
   const [logs, setLogs] = useState<LogEntryDTO[]>([]);
+  const [alerts, setAlerts] = useState<AlertDTO[]>([]);
+  const [loadGroups, setLoadGroups] = useState<LoadGroupDTO[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsDTO | null>(null);
   const [branding, setBranding] = useState<BrandingDTO>({
     platformName: 'OCPP CSMS',
@@ -68,13 +74,15 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void (async () => {
       try {
-        const [c, t, l, a, b, tn] = await Promise.all([
+        const [c, t, l, a, b, tn, al, lg] = await Promise.all([
           api.get<ChargerDTO[]>('/chargers'),
           api.get<TransactionDTO[]>('/transactions'),
           api.get<LogEntryDTO[]>('/logs'),
           api.get<AnalyticsDTO>('/analytics'),
           api.get<BrandingDTO>('/branding'),
           api.get<TenantDTO[]>('/tenants'),
+          api.get<AlertDTO[]>('/alerts'),
+          api.get<LoadGroupDTO[]>('/load-groups'),
         ]);
         setChargers(c);
         setTransactions(t);
@@ -82,6 +90,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         setAnalytics(a);
         setBranding(b);
         setTenants(tn);
+        setAlerts(al);
+        setLoadGroups(lg);
       } catch {
         /* server may not be up yet; SSE will backfill */
       }
@@ -124,6 +134,24 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         case 'analytics':
           setAnalytics(e.analytics);
           break;
+        case 'alert':
+          setAlerts((prev) => {
+            const i = prev.findIndex((a) => a.id === e.alert.id);
+            if (i < 0) return [e.alert, ...prev].slice(0, 200);
+            const next = [...prev];
+            next[i] = e.alert;
+            return next;
+          });
+          break;
+        case 'loadgroup':
+          setLoadGroups((prev) => {
+            const i = prev.findIndex((g) => g.id === e.group.id);
+            if (i < 0) return [...prev, e.group];
+            const next = [...prev];
+            next[i] = e.group;
+            return next;
+          });
+          break;
       }
     };
     return () => es.close();
@@ -140,6 +168,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       chargers,
       transactions,
       logs,
+      alerts,
+      loadGroups,
       analytics,
       branding,
       setBranding,
@@ -148,7 +178,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       setTenantId,
       allTenants: tenantId === ALL_TENANTS,
     }),
-    [connected, chargers, transactions, logs, analytics, branding, tenants, tenantId],
+    [connected, chargers, transactions, logs, alerts, loadGroups, analytics, branding, tenants, tenantId],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -162,7 +192,7 @@ export function useLive(): LiveData {
 
 /** Live data filtered to the currently selected operator (tenant). */
 export function useScoped() {
-  const { chargers, transactions, logs, tenantId, allTenants, branding } =
+  const { chargers, transactions, logs, alerts, loadGroups, tenantId, allTenants, branding } =
     useLive();
   return useMemo(() => {
     const chargerTenant = new Map(chargers.map((c) => [c.id, c.tenantId]));
@@ -172,14 +202,16 @@ export function useScoped() {
     const scopedChargers = allTenants
       ? chargers
       : chargers.filter((c) => c.tenantId === tenantId);
-    const scopedTx = transactions.filter((t) => inScope(t.chargerId));
-    const scopedLogs = logs.filter((l) => inScope(l.chargerId));
 
     return {
       chargers: scopedChargers,
-      transactions: scopedTx,
-      logs: scopedLogs,
+      transactions: transactions.filter((t) => inScope(t.chargerId)),
+      logs: logs.filter((l) => inScope(l.chargerId)),
+      alerts: alerts.filter((a) => inScope(a.chargerId)),
+      loadGroups: allTenants
+        ? loadGroups
+        : loadGroups.filter((g) => g.tenantId === tenantId),
       currency: branding.currency,
     };
-  }, [chargers, transactions, logs, tenantId, allTenants, branding.currency]);
+  }, [chargers, transactions, logs, alerts, loadGroups, tenantId, allTenants, branding.currency]);
 }

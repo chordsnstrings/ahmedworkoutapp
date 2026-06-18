@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type {
+  AlertDTO,
+  AlertSeverity,
   AnalyticsDTO,
   BrandingDTO,
   ChargerDTO,
   ConnectorDTO,
   ConnectorStatus,
+  LoadGroupDTO,
   LogEntryDTO,
   TariffDTO,
   TenantDTO,
@@ -25,7 +28,15 @@ class Store {
   private tokens = new Map<string, TokenDTO>();
   private tariffs = new Map<string, TariffDTO>();
   private tenants = new Map<string, TenantDTO>();
+  private loadGroups = new Map<string, LoadGroupDTO>();
+  private alerts: AlertDTO[] = [];
   private logs: LogEntryDTO[] = [];
+
+  /** Per-charger availability accounting for uptime % and fault counts. */
+  private health = new Map<
+    string,
+    { sinceMs: number; onlineMs: number; lastMs: number; online: boolean; faults: number[] }
+  >();
 
   /** New chargers land here until an operator claims them. */
   readonly defaultTenantId = 'unassigned';
@@ -184,17 +195,54 @@ class Store {
       ...existing,
       ...patch,
     };
+    this.trackHealth(charger);
+    this.decorate(charger);
     this.chargers.set(id, charger);
     bus.emitEvent({ type: 'charger', charger });
     this.pushAnalytics();
     return charger;
   }
 
+  /** Accumulate online/offline time so we can report a rolling uptime %. */
+  private trackHealth(charger: ChargerDTO) {
+    const now = Date.now();
+    const prev = this.health.get(charger.id);
+    const online = charger.state === 'Online';
+    if (!prev) {
+      this.health.set(charger.id, {
+        sinceMs: now,
+        onlineMs: 0,
+        lastMs: now,
+        online,
+        faults: [],
+      });
+      return;
+    }
+    if (prev.online) prev.onlineMs += now - prev.lastMs;
+    prev.lastMs = now;
+    prev.online = online;
+  }
+
+  private decorate(charger: ChargerDTO) {
+    const h = this.health.get(charger.id);
+    if (!h) return;
+    const now = Date.now();
+    const onlineMs = h.onlineMs + (h.online ? now - h.lastMs : 0);
+    const span = Math.max(1, now - h.sinceMs);
+    charger.uptimePct = Math.round((onlineMs / span) * 1000) / 10;
+    const dayAgo = now - 86_400_000;
+    charger.faults24h = h.faults.filter((t) => t > dayAgo).length;
+  }
+
   getCharger(id: string) {
-    return this.chargers.get(id);
+    const c = this.chargers.get(id);
+    if (c) this.decorate(c);
+    return c;
   }
   listChargers() {
-    return [...this.chargers.values()];
+    const list = [...this.chargers.values()];
+    for (const c of list) this.decorate(c);
+    return list;
   }
 
   // ----------------------------------------------------------------- tenants
@@ -223,11 +271,18 @@ class Store {
     const idx = charger.connectors.findIndex(
       (c) => c.connectorId === connectorId,
     );
+    const prev = idx >= 0 ? charger.connectors[idx] : undefined;
     if (idx >= 0)
       charger.connectors[idx] = { ...charger.connectors[idx], ...conn };
     else charger.connectors.push(conn);
     charger.connectors.sort((a, b) => a.connectorId - b.connectorId);
     this.upsertCharger(chargerId, { connectors: charger.connectors });
+
+    if (status === 'Faulted' && prev?.status !== 'Faulted') {
+      this.health.get(chargerId)?.faults.push(Date.now());
+      this.raiseAlert(chargerId, 'critical', 'connector_fault',
+        `Connector ${connectorId} faulted${errorCode ? ` (${errorCode})` : ''}`);
+    }
   }
 
   setConnectorPower(chargerId: string, connectorId: number, powerW: number) {
@@ -255,6 +310,101 @@ class Store {
       state: 'Offline',
       connectors: c.connectors,
     });
+    this.raiseAlert(chargerId, 'warning', 'offline', 'Charge point went offline');
+  }
+
+  // ------------------------------------------------------------------ alerts
+  raiseAlert(
+    chargerId: string,
+    severity: AlertSeverity,
+    type: string,
+    message: string,
+  ): AlertDTO {
+    const alert: AlertDTO = {
+      id: randomUUID(),
+      at: new Date().toISOString(),
+      chargerId,
+      severity,
+      type,
+      message,
+      acknowledged: false,
+    };
+    this.alerts.unshift(alert);
+    if (this.alerts.length > 200) this.alerts.pop();
+    bus.emitEvent({ type: 'alert', alert });
+    return alert;
+  }
+  listAlerts() {
+    return this.alerts;
+  }
+  ackAlert(id: string) {
+    const a = this.alerts.find((x) => x.id === id);
+    if (a) {
+      a.acknowledged = true;
+      bus.emitEvent({ type: 'alert', alert: a });
+    }
+    return a;
+  }
+  ackAllAlerts() {
+    for (const a of this.alerts)
+      if (!a.acknowledged) {
+        a.acknowledged = true;
+        bus.emitEvent({ type: 'alert', alert: a });
+      }
+  }
+
+  // -------------------------------------------------------------- load groups
+  listLoadGroups() {
+    const list = [...this.loadGroups.values()];
+    for (const g of list) this.decorateGroup(g);
+    return list;
+  }
+  getLoadGroup(id: string) {
+    const g = this.loadGroups.get(id);
+    if (g) this.decorateGroup(g);
+    return g;
+  }
+  upsertLoadGroup(input: Omit<LoadGroupDTO, 'id'> & { id?: string }): LoadGroupDTO {
+    const id = input.id ?? randomUUID();
+    const group: LoadGroupDTO = {
+      id,
+      tenantId: input.tenantId,
+      name: input.name,
+      limitKw: input.limitKw,
+      voltage: input.voltage || 230,
+      chargerIds: input.chargerIds ?? [],
+    };
+    this.loadGroups.set(id, group);
+    // Reflect membership back onto chargers.
+    for (const c of this.chargers.values())
+      if (group.chargerIds.includes(c.id)) c.loadGroupId = id;
+      else if (c.loadGroupId === id) c.loadGroupId = undefined;
+    this.decorateGroup(group);
+    bus.emitEvent({ type: 'loadgroup', group });
+    return group;
+  }
+  deleteLoadGroup(id: string) {
+    for (const c of this.chargers.values())
+      if (c.loadGroupId === id) c.loadGroupId = undefined;
+    return this.loadGroups.delete(id);
+  }
+  loadGroupFor(chargerId: string) {
+    return [...this.loadGroups.values()].find((g) =>
+      g.chargerIds.includes(chargerId),
+    );
+  }
+  /** Count active (charging) connectors and the per-connector amp allocation. */
+  private decorateGroup(group: LoadGroupDTO) {
+    let active = 0;
+    for (const id of group.chargerIds) {
+      const c = this.chargers.get(id);
+      if (c?.state !== 'Online') continue;
+      active += c.connectors.filter((x) => x.status === 'Charging').length;
+    }
+    group.activeConnectors = active;
+    const totalA = (group.limitKw * 1000) / (group.voltage || 230);
+    group.allocatedA =
+      active > 0 ? Math.floor(totalA / active) : Math.floor(totalA);
   }
 
   // ------------------------------------------------------------ transactions

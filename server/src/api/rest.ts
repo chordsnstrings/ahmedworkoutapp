@@ -139,8 +139,54 @@ export function createApiRouter() {
     }),
   );
 
+  // ---------------------------------------------------------------- alerts
+  api.get('/alerts', (_req, res) => res.json(store.listAlerts()));
+  api.post('/alerts/ack', (_req, res) => {
+    store.ackAllAlerts();
+    res.json({ ok: true });
+  });
+  api.post('/alerts/:id/ack', (req, res) => res.json(store.ackAlert(req.params.id) ?? {}));
+
+  // ------------------------------------------------------------ load groups
+  api.get('/load-groups', (_req, res) => res.json(store.listLoadGroups()));
+  api.post(
+    '/load-groups',
+    h((req, res) => res.status(201).json(store.upsertLoadGroup(req.body))),
+  );
+  api.put(
+    '/load-groups/:id',
+    h((req, res) =>
+      res.json(store.upsertLoadGroup({ ...req.body, id: req.params.id })),
+    ),
+  );
+  api.delete('/load-groups/:id', (req, res) => {
+    store.deleteLoadGroup(req.params.id);
+    res.status(204).end();
+  });
+
   // ---------------------------------------------------------- transactions
   api.get('/transactions', (_req, res) => res.json(store.listTransactions()));
+  api.get('/transactions.csv', (_req, res) => {
+    const rows = store.listTransactions();
+    const header = [
+      'id', 'chargerId', 'connectorId', 'idTag', 'state', 'startedAt',
+      'endedAt', 'energyWh', 'cost', 'currency', 'stopReason',
+    ];
+    const csv = [
+      header.join(','),
+      ...rows.map((t) =>
+        header
+          .map((k) => {
+            const v = (t as unknown as Record<string, unknown>)[k] ?? '';
+            return /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v;
+          })
+          .join(','),
+      ),
+    ].join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="sessions.csv"');
+    res.send(csv);
+  });
 
   // ----------------------------------------------------------------- logs
   api.get('/logs', (req, res) =>

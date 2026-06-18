@@ -3,7 +3,9 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   Activity,
   BatteryCharging,
+  Bell,
   CircleDollarSign,
+  Gauge,
   KeyRound,
   LayoutDashboard,
   Menu,
@@ -12,12 +14,14 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { ALL_TENANTS, useLive } from '../store/live';
+import { ALL_TENANTS, useLive, useScoped } from '../store/live';
 
 const NAV = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/chargers', label: 'Charge Points', icon: PlugZap },
   { to: '/transactions', label: 'Sessions', icon: BatteryCharging },
+  { to: '/load', label: 'Load Management', icon: Gauge },
+  { to: '/alerts', label: 'Alerts', icon: Bell },
   { to: '/access', label: 'Access / RFID', icon: KeyRound },
   { to: '/tariffs', label: 'Tariffs', icon: CircleDollarSign },
   { to: '/logs', label: 'Live OCPP Log', icon: Activity },
@@ -98,6 +102,31 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+function AlertBell() {
+  const { alerts } = useScoped();
+  const open = alerts.filter((a) => !a.acknowledged).length;
+  const critical = alerts.some((a) => !a.acknowledged && a.severity === 'critical');
+  return (
+    <NavLink
+      to="/alerts"
+      className="relative text-slate-300 hover:text-white"
+      aria-label="Alerts"
+    >
+      <Bell size={20} />
+      {open > 0 && (
+        <span
+          className={`absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 grid place-items-center
+            rounded-full text-[10px] font-bold text-ink-900 ${
+              critical ? 'bg-red-400' : 'bg-amber-400'
+            }`}
+        >
+          {open > 9 ? '9+' : open}
+        </span>
+      )}
+    </NavLink>
+  );
+}
+
 export function Layout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const { connected } = useLive();
@@ -157,6 +186,7 @@ export function Layout({ children }: { children: ReactNode }) {
             />
             {connected ? 'Live' : 'Reconnecting'}
           </div>
+          <AlertBell />
           <OperatorSwitcher />
         </header>
 

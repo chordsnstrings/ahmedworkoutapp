@@ -124,6 +124,20 @@ export function Chargers() {
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-ink-600/50 text-xs">
                 <span className="text-slate-500">{tenantName(c.tenantId)}</span>
                 <span className="flex items-center gap-2">
+                  {c.uptimePct != null && (
+                    <span
+                      className={`px-1.5 py-0.5 rounded font-mono ${
+                        c.uptimePct >= 99
+                          ? 'text-emerald-300'
+                          : c.uptimePct >= 90
+                            ? 'text-amber-300'
+                            : 'text-red-300'
+                      }`}
+                      title="Uptime"
+                    >
+                      {c.uptimePct}%
+                    </span>
+                  )}
                   {c.protocol && (
                     <span className="px-1.5 py-0.5 rounded bg-ink-600/60 text-slate-400 font-mono">
                       OCPP {c.protocol}

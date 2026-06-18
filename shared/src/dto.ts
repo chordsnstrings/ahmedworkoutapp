@@ -50,9 +50,43 @@ export interface ChargerDTO {
   bootReason?: string;
   /** Operator-applied current limit in amps (Dynamic Load Management). */
   powerLimitA?: number;
+  /** Load group this charger belongs to, if any. */
+  loadGroupId?: string;
   connectors: ConnectorDTO[];
   lastSeen?: string;
   connectedAt?: string;
+  /** Rolling availability percentage since first seen. */
+  uptimePct?: number;
+  /** Faults reported in the last 24 hours. */
+  faults24h?: number;
+}
+
+/** A site/circuit with a shared power budget shared across its chargers (DLM). */
+export interface LoadGroupDTO {
+  id: string;
+  tenantId: string;
+  name: string;
+  /** Total power budget for the group in kW. */
+  limitKw: number;
+  /** Nominal supply voltage used to convert kW ↔ amps. */
+  voltage: number;
+  chargerIds: string[];
+  /** Amps currently allocated to each charging connector (computed). */
+  allocatedA?: number;
+  /** Number of connectors actively drawing from the budget (computed). */
+  activeConnectors?: number;
+}
+
+export type AlertSeverity = 'info' | 'warning' | 'critical';
+
+export interface AlertDTO {
+  id: string;
+  at: string;
+  chargerId: string;
+  severity: AlertSeverity;
+  type: string;
+  message: string;
+  acknowledged: boolean;
 }
 
 export type TransactionState = 'Active' | 'Ended';
@@ -143,7 +177,9 @@ export type ServerEvent =
   | { type: 'charger:removed'; chargerId: string }
   | { type: 'transaction'; transaction: TransactionDTO }
   | { type: 'log'; entry: LogEntryDTO }
-  | { type: 'analytics'; analytics: AnalyticsDTO };
+  | { type: 'analytics'; analytics: AnalyticsDTO }
+  | { type: 'alert'; alert: AlertDTO }
+  | { type: 'loadgroup'; group: LoadGroupDTO };
 
 /** Remote command requests sent from the dashboard to a charger. */
 export interface RemoteStartRequest {

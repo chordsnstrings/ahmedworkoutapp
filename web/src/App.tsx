@@ -6,6 +6,8 @@ import { ChargerDetail } from './pages/ChargerDetail';
 import { Transactions } from './pages/Transactions';
 import { Tokens } from './pages/Tokens';
 import { Tariffs } from './pages/Tariffs';
+import { LoadGroups } from './pages/LoadGroups';
+import { Alerts } from './pages/Alerts';
 import { Logs } from './pages/Logs';
 import { Settings } from './pages/Settings';
 
@@ -17,6 +19,8 @@ export default function App() {
         <Route path="/chargers" element={<Chargers />} />
         <Route path="/chargers/:id" element={<ChargerDetail />} />
         <Route path="/transactions" element={<Transactions />} />
+        <Route path="/load" element={<LoadGroups />} />
+        <Route path="/alerts" element={<Alerts />} />
         <Route path="/access" element={<Tokens />} />
         <Route path="/tariffs" element={<Tariffs />} />
         <Route path="/logs" element={<Logs />} />

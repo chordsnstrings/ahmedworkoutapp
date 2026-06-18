@@ -4,6 +4,7 @@ import express from 'express';
 import { config } from './config';
 import { log } from './logger';
 import { createApiRouter } from './api/rest';
+import { startLoadManager } from './load';
 import { attachOcppServer } from './ocpp/server';
 
 const app = express();
@@ -22,6 +23,7 @@ app.get('/', (_req, res) =>
 
 const httpServer = createServer(app);
 attachOcppServer(httpServer);
+startLoadManager();
 
 httpServer.listen(config.port, () => {
   log.info(`CSMS listening on http://localhost:${config.port}`);
