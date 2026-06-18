@@ -6,6 +6,7 @@ import type {
   BrandingDTO,
   ChargerDTO,
   ConnectorDTO,
+  ConfigKeyDTO,
   ConnectorStatus,
   InvoiceDTO,
   LoadGroupDTO,
@@ -320,6 +321,21 @@ class Store {
   markSeen(chargerId: string) {
     const c = this.chargers.get(chargerId);
     if (c) this.upsertCharger(chargerId, { lastSeen: new Date().toISOString() });
+  }
+
+  setConfig(chargerId: string, config: ConfigKeyDTO[]) {
+    if (this.chargers.has(chargerId)) this.upsertCharger(chargerId, { config });
+  }
+  setFirmwareStatus(chargerId: string, firmwareStatus: string) {
+    const c = this.chargers.get(chargerId);
+    if (!c) return;
+    this.upsertCharger(chargerId, { firmwareStatus });
+    if (firmwareStatus === 'Installed' || firmwareStatus === 'Installing')
+      this.raiseAlert(chargerId, 'info', 'firmware', `Firmware ${firmwareStatus}`);
+  }
+  setDiagnosticsStatus(chargerId: string, diagnosticsStatus: string) {
+    if (this.chargers.has(chargerId))
+      this.upsertCharger(chargerId, { diagnosticsStatus });
   }
 
   setOffline(chargerId: string) {

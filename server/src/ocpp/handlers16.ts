@@ -106,11 +106,13 @@ export const handlers16: HandlerMap = {
     return { status: 'Accepted' };
   },
 
-  FirmwareStatusNotification(_conn, _p) {
+  FirmwareStatusNotification(conn, p) {
+    if (p.status) store.setFirmwareStatus(conn.id, p.status);
     return {};
   },
 
-  DiagnosticsStatusNotification(_conn, _p) {
+  DiagnosticsStatusNotification(conn, p) {
+    if (p.status) store.setDiagnosticsStatus(conn.id, p.status);
     return {};
   },
 };

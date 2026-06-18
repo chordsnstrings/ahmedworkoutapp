@@ -59,6 +59,20 @@ export interface ChargerDTO {
   uptimePct?: number;
   /** Faults reported in the last 24 hours. */
   faults24h?: number;
+  /** Cached configuration keys from the last GetConfiguration/GetVariables. */
+  config?: ConfigKeyDTO[];
+  /** Latest firmware update status (FirmwareStatusNotification). */
+  firmwareStatus?: string;
+  /** Latest diagnostics/log upload status. */
+  diagnosticsStatus?: string;
+  /** Whether the charger is enrolled for ISO 15118 Plug & Charge. */
+  plugAndCharge?: boolean;
+}
+
+export interface ConfigKeyDTO {
+  key: string;
+  value?: string;
+  readonly?: boolean;
 }
 
 /** A site/circuit with a shared power budget shared across its chargers (DLM). */

@@ -196,6 +196,48 @@ export function createApiRouter() {
     }),
   );
 
+  api.post(
+    '/chargers/:id/config',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      const config = await conn.getConfiguration();
+      store.setConfig(req.params.id, config);
+      res.json(config);
+    }),
+  );
+
+  api.post(
+    '/chargers/:id/config/set',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      const result = await conn.changeConfiguration(
+        req.body.key,
+        String(req.body.value),
+      );
+      res.json(result);
+    }),
+  );
+
+  api.post(
+    '/chargers/:id/firmware',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      res.json(await conn.updateFirmware(req.body.location));
+    }),
+  );
+
+  api.post(
+    '/chargers/:id/diagnostics',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      res.json(await conn.getDiagnostics(req.body.location));
+    }),
+  );
+
   // ---------------------------------------------------------------- alerts
   api.get('/alerts', (_req, res) => res.json(store.listAlerts()));
   api.post('/alerts/ack', (_req, res) => {

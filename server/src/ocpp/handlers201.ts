@@ -117,7 +117,13 @@ export const handlers201: HandlerMap = {
     return { status: 'Accepted' };
   },
 
-  FirmwareStatusNotification(_conn, _p) {
+  FirmwareStatusNotification(conn, p) {
+    if (p.status) store.setFirmwareStatus(conn.id, p.status);
+    return {};
+  },
+
+  LogStatusNotification(conn, p) {
+    if (p.status) store.setDiagnosticsStatus(conn.id, p.status);
     return {};
   },
 

@@ -3,7 +3,10 @@ import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   CalendarClock,
+  Download,
+  FileDown,
   Gauge,
+  ListTree,
   Play,
   Power,
   RotateCcw,
@@ -34,6 +37,9 @@ export function ChargerDetail() {
   const [connectorId, setConnectorId] = useState(1);
   const [limitA, setLimitA] = useState(16);
   const [resMinutes, setResMinutes] = useState(30);
+  const [cfgKey, setCfgKey] = useState('HeartbeatInterval');
+  const [cfgValue, setCfgValue] = useState('60');
+  const [fwLocation, setFwLocation] = useState('https://firmware.example.com/v2.tar.gz');
 
   const activeReservations = reservations.filter(
     (r) => r.chargerId === id && r.status === 'Active',
@@ -418,6 +424,116 @@ export function ChargerDetail() {
                 ))}
               </ul>
             )}
+          </div>
+
+          <div className={`card p-4 sm:p-5 ${readOnly ? 'hidden' : ''}`}>
+            <h2 className="font-semibold text-white mb-3">
+              Configuration &amp; firmware
+            </h2>
+
+            <div className="flex items-center gap-2">
+              <button
+                disabled={!online || busy != null}
+                onClick={() =>
+                  run('Read config', () => api.post(`/chargers/${id}/config`))
+                }
+                className="btn-ghost"
+              >
+                <ListTree size={16} /> Read config
+              </button>
+            </div>
+
+            {charger.config && charger.config.length > 0 && (
+              <div className="mt-3 max-h-44 overflow-y-auto rounded-lg border border-ink-600/60 text-xs">
+                <table className="w-full">
+                  <tbody className="divide-y divide-ink-600/40">
+                    {charger.config.map((k) => (
+                      <tr key={k.key}>
+                        <td className="px-2 py-1.5 text-slate-400 font-mono">{k.key}</td>
+                        <td className="px-2 py-1.5 text-slate-200 text-right font-mono">
+                          {k.value ?? '—'}
+                          {k.readonly && (
+                            <span className="ml-1 text-[10px] text-slate-600">ro</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <input
+                value={cfgKey}
+                onChange={(e) => setCfgKey(e.target.value)}
+                className="input"
+                placeholder="key"
+              />
+              <input
+                value={cfgValue}
+                onChange={(e) => setCfgValue(e.target.value)}
+                className="input"
+                placeholder="value"
+              />
+            </div>
+            <button
+              disabled={!online || busy != null}
+              onClick={() =>
+                run('Change config', () =>
+                  api.post(`/chargers/${id}/config/set`, { key: cfgKey, value: cfgValue }),
+                )
+              }
+              className="btn-ghost w-full justify-center mt-2"
+            >
+              Set configuration key
+            </button>
+
+            <div className="border-t border-ink-600/50 mt-3 pt-3 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="label">Firmware</span>
+                {charger.firmwareStatus && (
+                  <span className="text-xs text-accent">{charger.firmwareStatus}</span>
+                )}
+              </div>
+              <input
+                value={fwLocation}
+                onChange={(e) => setFwLocation(e.target.value)}
+                className="input"
+                placeholder="firmware URL"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  disabled={!online || busy != null}
+                  onClick={() =>
+                    run('Update firmware', () =>
+                      api.post(`/chargers/${id}/firmware`, { location: fwLocation }),
+                    )
+                  }
+                  className="btn-ghost justify-center"
+                >
+                  <Download size={16} /> Update FW
+                </button>
+                <button
+                  disabled={!online || busy != null}
+                  onClick={() =>
+                    run('Get diagnostics', () =>
+                      api.post(`/chargers/${id}/diagnostics`, {
+                        location: 'https://diag.example.com/upload',
+                      }),
+                    )
+                  }
+                  className="btn-ghost justify-center"
+                >
+                  <FileDown size={16} /> Diagnostics
+                </button>
+              </div>
+              {charger.diagnosticsStatus && (
+                <div className="text-xs text-slate-500">
+                  Diagnostics: {charger.diagnosticsStatus}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

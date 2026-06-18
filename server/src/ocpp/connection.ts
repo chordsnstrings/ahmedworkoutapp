@@ -236,6 +236,77 @@ export class ChargePointConnection {
     });
   }
 
+  /** Read configuration keys. Returns a normalised {key,value,readonly}[]. */
+  async getConfiguration(): Promise<
+    { key: string; value?: string; readonly?: boolean }[]
+  > {
+    if (this.version === '1.6') {
+      const res = await this.call<{ configurationKey?: any[] }>(
+        'GetConfiguration',
+        {},
+      );
+      return (res.configurationKey ?? []).map((k) => ({
+        key: k.key,
+        value: k.value,
+        readonly: k.readonly,
+      }));
+    }
+    // OCPP 2.0.1: read a representative set of variables.
+    const components = [
+      { component: { name: 'OCPPCommCtrlr' }, variable: { name: 'HeartbeatInterval' } },
+      { component: { name: 'SampledDataCtrlr' }, variable: { name: 'TxUpdatedInterval' } },
+      { component: { name: 'AuthCtrlr' }, variable: { name: 'Enabled' } },
+    ];
+    const res = await this.call<{ getVariableResult?: any[] }>('GetVariables', {
+      getVariableData: components,
+    });
+    return (res.getVariableResult ?? []).map((r) => ({
+      key: `${r.component?.name}.${r.variable?.name}`,
+      value: r.attributeValue,
+      readonly: r.attributeStatus !== 'Accepted',
+    }));
+  }
+
+  async changeConfiguration(key: string, value: string) {
+    if (this.version === '1.6') {
+      return this.call('ChangeConfiguration', { key, value });
+    }
+    const [component, variable] = key.includes('.')
+      ? key.split('.')
+      : ['OCPPCommCtrlr', key];
+    return this.call('SetVariables', {
+      setVariableData: [
+        {
+          attributeValue: value,
+          component: { name: component },
+          variable: { name: variable },
+        },
+      ],
+    });
+  }
+
+  async updateFirmware(location: string) {
+    const retrieveDate = new Date(Date.now() + 5_000).toISOString();
+    if (this.version === '1.6') {
+      return this.call('UpdateFirmware', { location, retrieveDate });
+    }
+    return this.call('UpdateFirmware', {
+      requestId: Math.floor(Math.random() * 1e6),
+      firmware: { location, retrieveDateTime: retrieveDate },
+    });
+  }
+
+  async getDiagnostics(location: string) {
+    if (this.version === '1.6') {
+      return this.call('GetDiagnostics', { location });
+    }
+    return this.call('GetLog', {
+      logType: 'DiagnosticsLog',
+      requestId: Math.floor(Math.random() * 1e6),
+      log: { remoteLocation: location },
+    });
+  }
+
   async reserveNow(
     reservationId: number,
     connectorId: number,

@@ -139,6 +139,30 @@ async function stopTransaction() {
   await sendStatus('Available');
 }
 
+function runFirmwareSequence() {
+  const states = ['Downloading', 'Downloaded', 'Installing', 'Installed'];
+  states.forEach((status, i) => {
+    setTimeout(() => {
+      const action =
+        version === '1.6'
+          ? 'FirmwareStatusNotification'
+          : 'FirmwareStatusNotification';
+      void call(action, { status, ...(version === '2.0.1' ? { requestId: 1 } : {}) });
+    }, (i + 1) * 1500);
+  });
+}
+
+function runDiagnosticsSequence(kind: 'Diagnostics' | 'Log') {
+  const action =
+    version === '1.6' ? 'DiagnosticsStatusNotification' : 'LogStatusNotification';
+  const states = kind === 'Log' ? ['Uploading', 'Uploaded'] : ['Uploading', 'Uploaded'];
+  states.forEach((status, i) => {
+    setTimeout(() => {
+      void call(action, { status, ...(version === '2.0.1' ? { requestId: 1 } : {}) });
+    }, (i + 1) * 1500);
+  });
+}
+
 async function sendStatus(status: string) {
   if (version === '1.6') {
     await call('StatusNotification', {
@@ -235,6 +259,51 @@ ws.on('message', async (data) => {
       break;
     case 'TriggerMessage':
       reply(messageId, { status: 'Accepted' });
+      break;
+    case 'GetConfiguration':
+      reply(messageId, {
+        configurationKey: [
+          { key: 'HeartbeatInterval', readonly: false, value: '60' },
+          { key: 'MeterValueSampleInterval', readonly: false, value: '30' },
+          { key: 'NumberOfConnectors', readonly: true, value: '1' },
+          { key: 'SupportedFeatureProfiles', readonly: true, value: 'Core,FirmwareManagement,SmartCharging,Reservation' },
+        ],
+        unknownKey: [],
+      });
+      break;
+    case 'ChangeConfiguration':
+      reply(messageId, { status: 'Accepted' });
+      break;
+    case 'GetVariables':
+      reply(messageId, {
+        getVariableResult: (payload.getVariableData ?? []).map((d: any) => ({
+          attributeStatus: 'Accepted',
+          attributeValue: '60',
+          component: d.component,
+          variable: d.variable,
+        })),
+      });
+      break;
+    case 'SetVariables':
+      reply(messageId, {
+        setVariableResult: (payload.setVariableData ?? []).map((d: any) => ({
+          attributeStatus: 'Accepted',
+          component: d.component,
+          variable: d.variable,
+        })),
+      });
+      break;
+    case 'UpdateFirmware':
+      reply(messageId, version === '1.6' ? {} : { status: 'Accepted' });
+      runFirmwareSequence();
+      break;
+    case 'GetDiagnostics':
+      reply(messageId, { fileName: 'diagnostics-001.tar.gz' });
+      runDiagnosticsSequence('Diagnostics');
+      break;
+    case 'GetLog':
+      reply(messageId, { status: 'Accepted', filename: 'log-001.tar.gz' });
+      runDiagnosticsSequence('Log');
       break;
     default:
       reply(messageId, {});
