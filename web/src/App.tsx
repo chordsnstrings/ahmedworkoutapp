@@ -16,6 +16,7 @@ import { Roaming } from './pages/Roaming';
 import { PlugAndCharge } from './pages/PlugAndCharge';
 import { Assistant } from './pages/Assistant';
 import { Reports } from './pages/Reports';
+import { Notifications } from './pages/Notifications';
 import { Audit } from './pages/Audit';
 import { Users } from './pages/Users';
 import { Logs } from './pages/Logs';
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/assistant" element={<Assistant />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/audit" element={<Audit />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/users" element={<Users />} />
         <Route path="/logs" element={<Logs />} />
         <Route path="/settings" element={<Settings />} />

@@ -5,6 +5,7 @@ import { config } from './config';
 import { log } from './logger';
 import { createApiRouter } from './api/rest';
 import { startLoadManager } from './load';
+import { startNotifier } from './notifier';
 import { startPersistence } from './persistence';
 import { createOcpiRouter } from './ocpi/server';
 import { attachOcppServer } from './ocpp/server';
@@ -30,6 +31,7 @@ app.get('/', (_req, res) =>
 const httpServer = createServer(app);
 attachOcppServer(httpServer);
 startLoadManager();
+startNotifier();
 
 httpServer.listen(config.port, () => {
   log.info(`CSMS listening on http://localhost:${config.port}`);

@@ -12,6 +12,7 @@ import {
   upsertUser,
 } from '../auth';
 import { checkout } from '../payments';
+import { deliver } from '../notifier';
 import { assistantHandler } from '../assistant';
 import { sseHandler } from './sse';
 
@@ -99,6 +100,24 @@ export function createApiRouter() {
     next();
   });
   api.get('/audit', admin, (_req, res) => res.json(store.listAudit()));
+
+  // ------------------------------------------------- webhooks (notifications)
+  api.get('/webhooks', admin, (_req, res) => res.json(store.listWebhooks()));
+  api.post('/webhooks', admin, h((req, res) => res.status(201).json(store.upsertWebhook(req.body))));
+  api.put('/webhooks/:id', admin, h((req, res) =>
+    res.json(store.upsertWebhook({ ...req.body, id: req.params.id })),
+  ));
+  api.delete('/webhooks/:id', admin, (req, res) => {
+    store.deleteWebhook(req.params.id);
+    res.status(204).end();
+  });
+  api.post('/webhooks/:id/test', admin, h(async (req, res) => {
+    const w = store.getWebhook(req.params.id);
+    if (!w) return res.status(404).json({ error: 'Not found' });
+    await deliver(w, 'test', { message: 'Test delivery from the CSMS' });
+    res.json({ ok: true });
+  }));
+  api.get('/webhook-deliveries', admin, (_req, res) => res.json(store.listDeliveries()));
 
   // ----------------------------------------------------------- live + meta
   api.get('/events', sseHandler);

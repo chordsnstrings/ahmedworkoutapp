@@ -22,6 +22,7 @@ import {
   Settings as SettingsIcon,
   Sparkles,
   Users as UsersIcon,
+  Webhook,
   X,
   Zap,
 } from 'lucide-react';
@@ -53,6 +54,7 @@ const NAV: {
   { to: '/reports', label: 'Reports', icon: FileBarChart },
   { to: '/logs', label: 'Live OCPP Log', icon: Activity },
   { to: '/audit', label: 'Audit Log', icon: ScrollText, role: 'admin' },
+  { to: '/notifications', label: 'Notifications', icon: Webhook, role: 'admin' },
   { to: '/users', label: 'Users & Roles', icon: UsersIcon, role: 'admin' },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
 ];

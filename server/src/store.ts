@@ -20,6 +20,8 @@ import type {
   TenantDTO,
   TokenDTO,
   TransactionDTO,
+  WebhookDeliveryDTO,
+  WebhookDTO,
 } from '@ocpp/shared';
 import { config } from './config';
 import { bus } from './events';
@@ -41,6 +43,8 @@ class Store {
   private invoices = new Map<string, InvoiceDTO>();
   private partners = new Map<string, RoamingPartnerDTO>();
   private contracts = new Map<string, ContractCertificateDTO>();
+  private webhooks = new Map<string, WebhookDTO>();
+  private deliveries: WebhookDeliveryDTO[] = [];
   private alerts: AlertDTO[] = [];
   private logs: LogEntryDTO[] = [];
   private ocppReservationSeq = 1000;
@@ -958,6 +962,42 @@ class Store {
     return [...this.partners.values()].find((p) => p.tokenIn === token);
   }
 
+  // ---------------------------------------------------- webhooks (notify)
+  listWebhooks() {
+    return [...this.webhooks.values()];
+  }
+  activeWebhooks() {
+    return this.listWebhooks().filter((w) => w.active);
+  }
+  upsertWebhook(input: { id?: string; url: string; events?: WebhookDTO['events']; active?: boolean }): WebhookDTO {
+    const id = input.id ?? randomUUID();
+    const existing = this.webhooks.get(id);
+    const webhook: WebhookDTO = {
+      id,
+      url: input.url,
+      events: input.events ?? existing?.events ?? ['alert'],
+      active: input.active ?? existing?.active ?? true,
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
+    };
+    this.webhooks.set(id, webhook);
+    return webhook;
+  }
+  deleteWebhook(id: string) {
+    return this.webhooks.delete(id);
+  }
+  getWebhook(id: string) {
+    return this.webhooks.get(id);
+  }
+  recordDelivery(d: Omit<WebhookDeliveryDTO, 'id' | 'at'>) {
+    const delivery: WebhookDeliveryDTO = { id: randomUUID(), at: new Date().toISOString(), ...d };
+    this.deliveries.unshift(delivery);
+    if (this.deliveries.length > 200) this.deliveries.pop();
+    return delivery;
+  }
+  listDeliveries() {
+    return this.deliveries;
+  }
+
   // -------------------------------------------------------------- analytics
   analytics(): AnalyticsDTO {
     const chargers = this.listChargers();
@@ -1054,6 +1094,7 @@ class Store {
       demandResponse: [...this.demandResponse.values()],
       reservations: [...this.reservations.values()],
       tenants: [...this.tenants.values()],
+      webhooks: [...this.webhooks.values()],
       alerts: this.alerts,
       audit: this.audit,
     };
@@ -1080,6 +1121,7 @@ class Store {
     fill(this.demandResponse, s.demandResponse ?? [], (d) => d.id);
     fill(this.reservations, s.reservations ?? [], (r) => r.id);
     if (s.tenants?.length) fill(this.tenants, s.tenants, (t) => t.id);
+    fill(this.webhooks, s.webhooks ?? [], (w) => w.id);
     this.alerts = s.alerts ?? [];
     this.audit = s.audit ?? [];
     // Reconnecting chargers are offline until they boot again.

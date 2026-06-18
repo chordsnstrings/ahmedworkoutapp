@@ -256,6 +256,31 @@ export interface BrandingDTO {
   currency: string;
 }
 
+export type WebhookEvent =
+  | 'alert'
+  | 'transaction'
+  | 'reservation'
+  | 'demandresponse'
+  | 'all';
+
+export interface WebhookDTO {
+  id: string;
+  url: string;
+  events: WebhookEvent[];
+  active: boolean;
+  createdAt: string;
+}
+
+export interface WebhookDeliveryDTO {
+  id: string;
+  webhookId: string;
+  at: string;
+  event: string;
+  status: 'ok' | 'failed';
+  httpStatus?: number;
+  error?: string;
+}
+
 export type UserRole = 'admin' | 'operator' | 'viewer';
 
 export interface UserDTO {
