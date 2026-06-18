@@ -14,6 +14,7 @@ import type {
   ChargerDTO,
   LoadGroupDTO,
   LogEntryDTO,
+  ReservationDTO,
   ServerEvent,
   TenantDTO,
   TransactionDTO,
@@ -29,6 +30,7 @@ interface LiveData {
   logs: LogEntryDTO[];
   alerts: AlertDTO[];
   loadGroups: LoadGroupDTO[];
+  reservations: ReservationDTO[];
   analytics: AnalyticsDTO | null;
   branding: BrandingDTO;
   setBranding: (b: BrandingDTO) => void;
@@ -53,6 +55,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [logs, setLogs] = useState<LogEntryDTO[]>([]);
   const [alerts, setAlerts] = useState<AlertDTO[]>([]);
   const [loadGroups, setLoadGroups] = useState<LoadGroupDTO[]>([]);
+  const [reservations, setReservations] = useState<ReservationDTO[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsDTO | null>(null);
   const [branding, setBranding] = useState<BrandingDTO>({
     platformName: 'OCPP CSMS',
@@ -92,6 +95,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         setTenants(tn);
         setAlerts(al);
         setLoadGroups(lg);
+        setReservations(await api.get<ReservationDTO[]>('/reservations'));
       } catch {
         /* server may not be up yet; SSE will backfill */
       }
@@ -152,6 +156,15 @@ export function LiveProvider({ children }: { children: ReactNode }) {
             return next;
           });
           break;
+        case 'reservation':
+          setReservations((prev) => {
+            const i = prev.findIndex((r) => r.id === e.reservation.id);
+            if (i < 0) return [e.reservation, ...prev];
+            const next = [...prev];
+            next[i] = e.reservation;
+            return next;
+          });
+          break;
       }
     };
     return () => es.close();
@@ -170,6 +183,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       logs,
       alerts,
       loadGroups,
+      reservations,
       analytics,
       branding,
       setBranding,
@@ -178,7 +192,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       setTenantId,
       allTenants: tenantId === ALL_TENANTS,
     }),
-    [connected, chargers, transactions, logs, alerts, loadGroups, analytics, branding, tenants, tenantId],
+    [connected, chargers, transactions, logs, alerts, loadGroups, reservations, analytics, branding, tenants, tenantId],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

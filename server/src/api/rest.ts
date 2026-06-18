@@ -164,6 +164,48 @@ export function createApiRouter() {
     res.status(204).end();
   });
 
+  // --------------------------------------------------------- reservations
+  api.get('/reservations', (_req, res) => res.json(store.listReservations()));
+  api.post(
+    '/chargers/:id/reserve',
+    h(async (req, res) => {
+      const conn = requireConnection(req, res);
+      if (!conn) return;
+      const reservation = store.createReservation({
+        chargerId: req.params.id,
+        connectorId: Number(req.body.connectorId),
+        idTag: req.body.idTag ?? 'RFID-0001',
+        minutes: Number(req.body.minutes ?? 30),
+      });
+      try {
+        const result: any = await conn.reserveNow(
+          reservation.ocppReservationId,
+          reservation.connectorId,
+          reservation.idTag,
+          reservation.expiresAt,
+        );
+        if (result?.status && result.status !== 'Accepted')
+          store.cancelReservation(reservation.id);
+        res.json({ reservation, result });
+      } catch (e) {
+        store.cancelReservation(reservation.id);
+        throw e;
+      }
+    }),
+  );
+  api.post(
+    '/reservations/:id/cancel',
+    h(async (req, res) => {
+      const reservation = store.getReservation(req.params.id);
+      if (!reservation) return res.status(404).json({ error: 'Not found' });
+      const conn = connections.get(reservation.chargerId);
+      let result: unknown = { status: 'Offline' };
+      if (conn) result = await conn.cancelReservation(reservation.ocppReservationId);
+      store.cancelReservation(reservation.id);
+      res.json({ result });
+    }),
+  );
+
   // ---------------------------------------------------------- transactions
   api.get('/transactions', (_req, res) => res.json(store.listTransactions()));
   api.get('/transactions.csv', (_req, res) => {

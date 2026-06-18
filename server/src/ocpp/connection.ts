@@ -236,6 +236,32 @@ export class ChargePointConnection {
     });
   }
 
+  async reserveNow(
+    reservationId: number,
+    connectorId: number,
+    idTag: string,
+    expiryDate: string,
+  ) {
+    if (this.version === '1.6') {
+      return this.call('ReserveNow', {
+        connectorId,
+        expiryDate,
+        idTag,
+        reservationId,
+      });
+    }
+    return this.call('ReserveNow', {
+      id: reservationId,
+      expiryDateTime: expiryDate,
+      idToken: { idToken: idTag, type: 'ISO14443' },
+      evseId: connectorId,
+    });
+  }
+
+  async cancelReservation(reservationId: number) {
+    return this.call('CancelReservation', { reservationId });
+  }
+
   async triggerMessage(requestedMessage: string, connectorId?: number) {
     if (this.version === '1.6') {
       return this.call('TriggerMessage', {

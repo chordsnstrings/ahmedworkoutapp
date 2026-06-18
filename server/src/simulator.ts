@@ -225,6 +225,14 @@ ws.on('message', async (data) => {
     case 'SetChargingProfile':
       reply(messageId, { status: 'Accepted' });
       break;
+    case 'ReserveNow':
+      reply(messageId, { status: 'Accepted' });
+      setTimeout(() => sendStatus('Reserved'), 300);
+      break;
+    case 'CancelReservation':
+      reply(messageId, { status: 'Accepted' });
+      setTimeout(() => sendStatus('Available'), 300);
+      break;
     case 'TriggerMessage':
       reply(messageId, { status: 'Accepted' });
       break;

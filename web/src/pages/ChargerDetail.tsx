@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  CalendarClock,
   Gauge,
   Play,
   Power,
@@ -21,7 +22,7 @@ import {
 
 export function ChargerDetail() {
   const { id = '' } = useParams();
-  const { chargers, transactions, tenants, branding } = useLive();
+  const { chargers, transactions, reservations, tenants, branding } = useLive();
   const charger = chargers.find((c) => c.id === id);
 
   const [busy, setBusy] = useState<string | null>(null);
@@ -29,6 +30,11 @@ export function ChargerDetail() {
   const [idTag, setIdTag] = useState('RFID-0001');
   const [connectorId, setConnectorId] = useState(1);
   const [limitA, setLimitA] = useState(16);
+  const [resMinutes, setResMinutes] = useState(30);
+
+  const activeReservations = reservations.filter(
+    (r) => r.chargerId === id && r.status === 'Active',
+  );
 
   const sessions = useMemo(
     () => transactions.filter((t) => t.chargerId === id),
@@ -342,6 +348,67 @@ export function ChargerDetail() {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="card p-4 sm:p-5">
+            <h2 className="font-semibold text-white mb-3">Reservations</h2>
+            <div className="flex items-end gap-2">
+              <label className="block flex-1">
+                <span className="label">Hold for (min)</span>
+                <input
+                  type="number"
+                  min={5}
+                  value={resMinutes}
+                  onChange={(e) => setResMinutes(Number(e.target.value))}
+                  className="input mt-1"
+                />
+              </label>
+              <button
+                disabled={!online || busy != null}
+                onClick={() =>
+                  run('Reserve', () =>
+                    api.post(`/chargers/${id}/reserve`, {
+                      connectorId,
+                      idTag,
+                      minutes: resMinutes,
+                    }),
+                  )
+                }
+                className="btn-ghost"
+              >
+                <CalendarClock size={16} /> Reserve C{connectorId}
+              </button>
+            </div>
+
+            {activeReservations.length > 0 && (
+              <ul className="mt-3 space-y-2">
+                {activeReservations.map((r) => (
+                  <li
+                    key={r.id}
+                    className="flex items-center justify-between rounded-lg border border-ink-600/60 px-3 py-2 text-sm"
+                  >
+                    <div>
+                      <div className="text-slate-200">
+                        C{r.connectorId} · {r.idTag}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        until {new Date(r.expiresAt).toLocaleTimeString()}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() =>
+                        run('Cancel reservation', () =>
+                          api.post(`/reservations/${r.id}/cancel`),
+                        )
+                      }
+                      className="btn-ghost py-1 px-2 text-xs"
+                    >
+                      Cancel
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       </div>

@@ -121,18 +121,46 @@ export interface TokenDTO {
   createdAt: string;
 }
 
+/** A time-of-use pricing window (overrides the base energy price). */
+export interface TariffWindow {
+  /** Local hour the window starts (0–23). */
+  startHour: number;
+  /** Local hour the window ends (1–24, exclusive). */
+  endHour: number;
+  pricePerKwh: number;
+  label?: string;
+}
+
 /** Billing tariff applied to sessions. */
 export interface TariffDTO {
   id: string;
   name: string;
   currency: string;
-  /** Price per kWh of energy delivered. */
+  /** Base price per kWh of energy delivered. */
   pricePerKwh: number;
   /** Price per hour of connection/charging time. */
   pricePerHour: number;
   /** One-off session fee. */
   sessionFee: number;
   isDefault: boolean;
+  /** Time-of-use windows; the matching window's price overrides the base. */
+  windows?: TariffWindow[];
+  /** If set, this tariff applies to tokens in this access group. */
+  appliesToGroup?: string;
+}
+
+export type ReservationStatus = 'Active' | 'Expired' | 'Cancelled' | 'Used';
+
+export interface ReservationDTO {
+  id: string;
+  /** Numeric id sent to the charge point over OCPP. */
+  ocppReservationId: number;
+  chargerId: string;
+  connectorId: number;
+  idTag: string;
+  status: ReservationStatus;
+  createdAt: string;
+  expiresAt: string;
 }
 
 export type LogDirection = 'in' | 'out';
@@ -179,7 +207,8 @@ export type ServerEvent =
   | { type: 'log'; entry: LogEntryDTO }
   | { type: 'analytics'; analytics: AnalyticsDTO }
   | { type: 'alert'; alert: AlertDTO }
-  | { type: 'loadgroup'; group: LoadGroupDTO };
+  | { type: 'loadgroup'; group: LoadGroupDTO }
+  | { type: 'reservation'; reservation: ReservationDTO };
 
 /** Remote command requests sent from the dashboard to a charger. */
 export interface RemoteStartRequest {

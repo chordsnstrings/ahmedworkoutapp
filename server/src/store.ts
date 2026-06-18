@@ -9,6 +9,7 @@ import type {
   ConnectorStatus,
   LoadGroupDTO,
   LogEntryDTO,
+  ReservationDTO,
   TariffDTO,
   TenantDTO,
   TokenDTO,
@@ -29,8 +30,10 @@ class Store {
   private tariffs = new Map<string, TariffDTO>();
   private tenants = new Map<string, TenantDTO>();
   private loadGroups = new Map<string, LoadGroupDTO>();
+  private reservations = new Map<string, ReservationDTO>();
   private alerts: AlertDTO[] = [];
   private logs: LogEntryDTO[] = [];
+  private ocppReservationSeq = 1000;
 
   /** Per-charger availability accounting for uptime % and fault counts. */
   private health = new Map<
@@ -49,6 +52,7 @@ class Store {
 
   constructor() {
     this.seed();
+    setInterval(() => this.expireReservations(), 30_000).unref();
   }
 
   private seed() {
@@ -416,7 +420,8 @@ class Store {
     transactionId?: string;
   }): TransactionDTO {
     const id = input.transactionId ?? String(Date.now() % 1_000_000_000);
-    const tariff = this.defaultTariff();
+    const tariff = this.selectTariff(input.idTag);
+    this.consumeReservation(input.chargerId, input.connectorId);
     const tx: TransactionDTO = {
       id,
       chargerId: input.chargerId,
@@ -478,6 +483,30 @@ class Store {
     );
   }
 
+  /** Pick the tariff for a session: a group-specific tariff if the token has a
+   *  matching group, otherwise the default. */
+  private selectTariff(idTag?: string): TariffDTO | undefined {
+    const group = idTag ? this.tokens.get(idTag)?.group : undefined;
+    if (group) {
+      const match = [...this.tariffs.values()].find(
+        (t) => t.appliesToGroup === group,
+      );
+      if (match) return match;
+    }
+    return this.defaultTariff();
+  }
+
+  /** Energy price for a tariff at a given time, honouring time-of-use windows. */
+  private energyPrice(tariff: TariffDTO, at: Date): number {
+    const hour = at.getHours();
+    const window = tariff.windows?.find((w) =>
+      w.startHour <= w.endHour
+        ? hour >= w.startHour && hour < w.endHour
+        : hour >= w.startHour || hour < w.endHour,
+    );
+    return window?.pricePerKwh ?? tariff.pricePerKwh;
+  }
+
   private computeCost(tx: TransactionDTO): number {
     const tariff = tx.tariffId ? this.tariffs.get(tx.tariffId) : undefined;
     if (!tariff) return 0;
@@ -488,9 +517,68 @@ class Store {
         : 0;
     const cost =
       tariff.sessionFee +
-      kwh * tariff.pricePerKwh +
+      kwh * this.energyPrice(tariff, new Date(tx.startedAt)) +
       hours * tariff.pricePerHour;
     return Math.round(cost * 100) / 100;
+  }
+
+  // ------------------------------------------------------------ reservations
+  listReservations() {
+    return [...this.reservations.values()].sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt),
+    );
+  }
+  getReservation(id: string) {
+    return this.reservations.get(id);
+  }
+  createReservation(input: {
+    chargerId: string;
+    connectorId: number;
+    idTag: string;
+    minutes: number;
+  }): ReservationDTO {
+    const now = Date.now();
+    const reservation: ReservationDTO = {
+      id: randomUUID(),
+      ocppReservationId: this.ocppReservationSeq++,
+      chargerId: input.chargerId,
+      connectorId: input.connectorId,
+      idTag: input.idTag,
+      status: 'Active',
+      createdAt: new Date(now).toISOString(),
+      expiresAt: new Date(now + input.minutes * 60_000).toISOString(),
+    };
+    this.reservations.set(reservation.id, reservation);
+    bus.emitEvent({ type: 'reservation', reservation });
+    return reservation;
+  }
+  private setReservationStatus(id: string, status: ReservationDTO['status']) {
+    const r = this.reservations.get(id);
+    if (r && r.status === 'Active') {
+      r.status = status;
+      bus.emitEvent({ type: 'reservation', reservation: r });
+    }
+    return r;
+  }
+  cancelReservation(id: string) {
+    return this.setReservationStatus(id, 'Cancelled');
+  }
+  /** When a session begins, mark any matching active reservation as used. */
+  private consumeReservation(chargerId: string, connectorId: number) {
+    for (const r of this.reservations.values())
+      if (
+        r.status === 'Active' &&
+        r.chargerId === chargerId &&
+        r.connectorId === connectorId
+      )
+        this.setReservationStatus(r.id, 'Used');
+  }
+  /** Expire reservations whose window has passed. */
+  expireReservations() {
+    const now = Date.now();
+    for (const r of this.reservations.values())
+      if (r.status === 'Active' && Date.parse(r.expiresAt) < now)
+        this.setReservationStatus(r.id, 'Expired');
   }
 
   // ------------------------------------------------------------------ tokens
