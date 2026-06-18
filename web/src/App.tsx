@@ -7,6 +7,7 @@ import { Transactions } from './pages/Transactions';
 import { Tokens } from './pages/Tokens';
 import { Tariffs } from './pages/Tariffs';
 import { LoadGroups } from './pages/LoadGroups';
+import { Energy } from './pages/Energy';
 import { Alerts } from './pages/Alerts';
 import { Payments } from './pages/Payments';
 import { Roaming } from './pages/Roaming';
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/chargers/:id" element={<ChargerDetail />} />
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/load" element={<LoadGroups />} />
+        <Route path="/energy" element={<Energy />} />
         <Route path="/alerts" element={<Alerts />} />
         <Route path="/access" element={<Tokens />} />
         <Route path="/plug-and-charge" element={<PlugAndCharge />} />

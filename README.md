@@ -33,6 +33,13 @@ web dashboard for Charge Point Operators (CPOs).
   gateway (or real Stripe PaymentIntents when `STRIPE_SECRET_KEY` is set), and
   **ad-hoc guest charging** through a public QR page (`/charge/<id>`).
 
+**Energy management (solar · battery · V2G · demand response)**
+- Load groups carry on-site solar, battery and SoC; the DLM rebalances against an
+  **effective budget** = nominal + solar + battery − active curtailment.
+- Schedulable **demand-response events** (curtail or V2G) that shed kW from a group
+  for a window, auto-activate/expire, and immediately re-throttle live sessions.
+- Energy & DR dashboard with per-group effective-vs-nominal capacity bars.
+
 **ISO 15118 Plug & Charge**
 - Contract-certificate (eMAID) store with valid/revoked/expired states; OCPP 2.0.1
   `Authorize` and `TransactionEvent` authorize eMAID id-tokens against it, plus a

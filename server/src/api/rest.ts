@@ -297,6 +297,17 @@ export function createApiRouter() {
     res.status(204).end();
   });
 
+  // -------------------------------------------------------- demand response
+  api.get('/demand-response', (_req, res) =>
+    res.json(store.listDemandResponse()),
+  );
+  api.post('/demand-response', h((req, res) =>
+    res.status(201).json(store.createDemandResponse(req.body)),
+  ));
+  api.post('/demand-response/:id/cancel', (req, res) =>
+    res.json(store.cancelDemandResponse(req.params.id) ?? {}),
+  );
+
   // --------------------------------------------------------- reservations
   api.get('/reservations', (_req, res) => res.json(store.listReservations()));
   api.post(

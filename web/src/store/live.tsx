@@ -12,6 +12,7 @@ import type {
   AnalyticsDTO,
   BrandingDTO,
   ChargerDTO,
+  DemandResponseEventDTO,
   LoadGroupDTO,
   LogEntryDTO,
   ReservationDTO,
@@ -31,6 +32,7 @@ interface LiveData {
   alerts: AlertDTO[];
   loadGroups: LoadGroupDTO[];
   reservations: ReservationDTO[];
+  demandResponse: DemandResponseEventDTO[];
   analytics: AnalyticsDTO | null;
   branding: BrandingDTO;
   setBranding: (b: BrandingDTO) => void;
@@ -56,6 +58,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<AlertDTO[]>([]);
   const [loadGroups, setLoadGroups] = useState<LoadGroupDTO[]>([]);
   const [reservations, setReservations] = useState<ReservationDTO[]>([]);
+  const [demandResponse, setDemandResponse] = useState<DemandResponseEventDTO[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsDTO | null>(null);
   const [branding, setBranding] = useState<BrandingDTO>({
     platformName: 'OCPP CSMS',
@@ -96,6 +99,9 @@ export function LiveProvider({ children }: { children: ReactNode }) {
         setAlerts(al);
         setLoadGroups(lg);
         setReservations(await api.get<ReservationDTO[]>('/reservations'));
+        setDemandResponse(
+          await api.get<DemandResponseEventDTO[]>('/demand-response'),
+        );
       } catch {
         /* server may not be up yet; SSE will backfill */
       }
@@ -165,6 +171,15 @@ export function LiveProvider({ children }: { children: ReactNode }) {
             return next;
           });
           break;
+        case 'demandresponse':
+          setDemandResponse((prev) => {
+            const i = prev.findIndex((d) => d.id === e.event.id);
+            if (i < 0) return [e.event, ...prev];
+            const next = [...prev];
+            next[i] = e.event;
+            return next;
+          });
+          break;
       }
     };
     return () => es.close();
@@ -184,6 +199,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       alerts,
       loadGroups,
       reservations,
+      demandResponse,
       analytics,
       branding,
       setBranding,
@@ -192,7 +208,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
       setTenantId,
       allTenants: tenantId === ALL_TENANTS,
     }),
-    [connected, chargers, transactions, logs, alerts, loadGroups, reservations, analytics, branding, tenants, tenantId],
+    [connected, chargers, transactions, logs, alerts, loadGroups, reservations, demandResponse, analytics, branding, tenants, tenantId],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

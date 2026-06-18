@@ -85,10 +85,36 @@ export interface LoadGroupDTO {
   /** Nominal supply voltage used to convert kW ↔ amps. */
   voltage: number;
   chargerIds: string[];
+  /** On-site solar generation available to the group (kW). */
+  solarKw?: number;
+  /** On-site battery discharge available to the group (kW). */
+  batteryKw?: number;
+  /** Battery state of charge (%). */
+  batterySoc?: number;
   /** Amps currently allocated to each charging connector (computed). */
   allocatedA?: number;
   /** Number of connectors actively drawing from the budget (computed). */
   activeConnectors?: number;
+  /** Budget after solar, battery and any active demand-response curtailment (kW). */
+  effectiveLimitKw?: number;
+  /** True when a demand-response event is curtailing this group now. */
+  drActive?: boolean;
+}
+
+export type DemandResponseType = 'curtail' | 'v2g';
+export type DemandResponseStatus = 'scheduled' | 'active' | 'ended';
+
+/** A grid demand-response event that curtails (or reverses, V2G) a group. */
+export interface DemandResponseEventDTO {
+  id: string;
+  groupId: string;
+  name: string;
+  type: DemandResponseType;
+  /** kW to shed from the group's budget (curtail) or discharge (v2g). */
+  magnitudeKw: number;
+  startsAt: string;
+  endsAt: string;
+  status: DemandResponseStatus;
 }
 
 export type AlertSeverity = 'info' | 'warning' | 'critical';
@@ -293,7 +319,8 @@ export type ServerEvent =
   | { type: 'analytics'; analytics: AnalyticsDTO }
   | { type: 'alert'; alert: AlertDTO }
   | { type: 'loadgroup'; group: LoadGroupDTO }
-  | { type: 'reservation'; reservation: ReservationDTO };
+  | { type: 'reservation'; reservation: ReservationDTO }
+  | { type: 'demandresponse'; event: DemandResponseEventDTO };
 
 /** Remote command requests sent from the dashboard to a charger. */
 export interface RemoteStartRequest {

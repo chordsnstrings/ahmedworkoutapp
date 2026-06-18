@@ -74,6 +74,42 @@ export function LoadGroups() {
             </label>
           </div>
 
+          <div className="grid sm:grid-cols-3 gap-3">
+            <label className="block">
+              <span className="label">Solar (kW)</span>
+              <input
+                type="number"
+                value={editing.solarKw ?? 0}
+                onChange={(e) =>
+                  setEditing({ ...editing, solarKw: Number(e.target.value) })
+                }
+                className="input mt-1"
+              />
+            </label>
+            <label className="block">
+              <span className="label">Battery (kW)</span>
+              <input
+                type="number"
+                value={editing.batteryKw ?? 0}
+                onChange={(e) =>
+                  setEditing({ ...editing, batteryKw: Number(e.target.value) })
+                }
+                className="input mt-1"
+              />
+            </label>
+            <label className="block">
+              <span className="label">Battery SoC (%)</span>
+              <input
+                type="number"
+                value={editing.batterySoc ?? 0}
+                onChange={(e) =>
+                  setEditing({ ...editing, batterySoc: Number(e.target.value) })
+                }
+                className="input mt-1"
+              />
+            </label>
+          </div>
+
           <div>
             <span className="label">Chargers in this group</span>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-2">

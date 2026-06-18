@@ -10,6 +10,7 @@ import type {
   ConnectorStatus,
   ContractCertificateDTO,
   ContractStatus,
+  DemandResponseEventDTO,
   InvoiceDTO,
   LoadGroupDTO,
   LogEntryDTO,
@@ -35,6 +36,7 @@ class Store {
   private tariffs = new Map<string, TariffDTO>();
   private tenants = new Map<string, TenantDTO>();
   private loadGroups = new Map<string, LoadGroupDTO>();
+  private demandResponse = new Map<string, DemandResponseEventDTO>();
   private reservations = new Map<string, ReservationDTO>();
   private invoices = new Map<string, InvoiceDTO>();
   private partners = new Map<string, RoamingPartnerDTO>();
@@ -62,6 +64,7 @@ class Store {
   constructor() {
     this.seed();
     setInterval(() => this.expireReservations(), 30_000).unref();
+    setInterval(() => this.tickDemandResponse(), 10_000).unref();
   }
 
   private seed() {
@@ -428,6 +431,9 @@ class Store {
       limitKw: input.limitKw,
       voltage: input.voltage || 230,
       chargerIds: input.chargerIds ?? [],
+      solarKw: input.solarKw ?? 0,
+      batteryKw: input.batteryKw ?? 0,
+      batterySoc: input.batterySoc ?? 0,
     };
     this.loadGroups.set(id, group);
     // Reflect membership back onto chargers.
@@ -448,7 +454,7 @@ class Store {
       g.chargerIds.includes(chargerId),
     );
   }
-  /** Count active (charging) connectors and the per-connector amp allocation. */
+  /** Count active connectors and compute the effective (solar/DR-adjusted) budget. */
   private decorateGroup(group: LoadGroupDTO) {
     let active = 0;
     for (const id of group.chargerIds) {
@@ -457,9 +463,96 @@ class Store {
       active += c.connectors.filter((x) => x.status === 'Charging').length;
     }
     group.activeConnectors = active;
-    const totalA = (group.limitKw * 1000) / (group.voltage || 230);
+
+    const reduction = this.activeDrReduction(group.id);
+    group.drActive = reduction > 0;
+    const effective = Math.max(
+      0,
+      group.limitKw + (group.solarKw ?? 0) + (group.batteryKw ?? 0) - reduction,
+    );
+    group.effectiveLimitKw = Math.round(effective * 10) / 10;
+
+    const totalA = (effective * 1000) / (group.voltage || 230);
     group.allocatedA =
       active > 0 ? Math.floor(totalA / active) : Math.floor(totalA);
+  }
+
+  // ------------------------------------------------------ demand response
+  listDemandResponse() {
+    return [...this.demandResponse.values()].sort((a, b) =>
+      b.startsAt.localeCompare(a.startsAt),
+    );
+  }
+  createDemandResponse(input: {
+    groupId: string;
+    name: string;
+    type?: DemandResponseEventDTO['type'];
+    magnitudeKw: number;
+    minutes: number;
+    startInMinutes?: number;
+  }): DemandResponseEventDTO {
+    const now = Date.now();
+    const start = now + (input.startInMinutes ?? 0) * 60_000;
+    const event: DemandResponseEventDTO = {
+      id: randomUUID(),
+      groupId: input.groupId,
+      name: input.name,
+      type: input.type ?? 'curtail',
+      magnitudeKw: input.magnitudeKw,
+      startsAt: new Date(start).toISOString(),
+      endsAt: new Date(start + input.minutes * 60_000).toISOString(),
+      status: start <= now ? 'active' : 'scheduled',
+    };
+    this.demandResponse.set(event.id, event);
+    bus.emitEvent({ type: 'demandresponse', event });
+    bus.emitEvent({ type: 'loadgroup', group: this.getLoadGroup(event.groupId)! });
+    return event;
+  }
+  cancelDemandResponse(id: string) {
+    const e = this.demandResponse.get(id);
+    if (e && e.status !== 'ended') {
+      e.status = 'ended';
+      e.endsAt = new Date().toISOString();
+      bus.emitEvent({ type: 'demandresponse', event: e });
+      const g = this.getLoadGroup(e.groupId);
+      if (g) bus.emitEvent({ type: 'loadgroup', group: g });
+    }
+    return e;
+  }
+  /** Total kW currently being curtailed from a group by active DR events. */
+  private activeDrReduction(groupId: string) {
+    const now = Date.now();
+    let total = 0;
+    for (const e of this.demandResponse.values())
+      if (
+        e.groupId === groupId &&
+        e.status === 'active' &&
+        Date.parse(e.startsAt) <= now &&
+        Date.parse(e.endsAt) > now
+      )
+        total += e.magnitudeKw;
+    return total;
+  }
+  /** Activate/end DR events on their schedule and rebalance affected groups. */
+  tickDemandResponse() {
+    const now = Date.now();
+    for (const e of this.demandResponse.values()) {
+      const start = Date.parse(e.startsAt);
+      const end = Date.parse(e.endsAt);
+      let changed = false;
+      if (e.status === 'scheduled' && start <= now && end > now) {
+        e.status = 'active';
+        changed = true;
+      } else if (e.status !== 'ended' && end <= now) {
+        e.status = 'ended';
+        changed = true;
+      }
+      if (changed) {
+        bus.emitEvent({ type: 'demandresponse', event: e });
+        const g = this.getLoadGroup(e.groupId);
+        if (g) bus.emitEvent({ type: 'loadgroup', group: g });
+      }
+    }
   }
 
   // ------------------------------------------------------------ transactions

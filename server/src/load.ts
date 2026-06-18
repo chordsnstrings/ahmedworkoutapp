@@ -23,7 +23,9 @@ function rebalance(groupId: string) {
         charging.push({ chargerId: id, connectorId: conn.connectorId });
   }
 
-  const totalA = (group.limitKw * 1000) / (group.voltage || 230);
+  // Use the effective budget (solar + battery, minus active demand response).
+  const budgetKw = group.effectiveLimitKw ?? group.limitKw;
+  const totalA = (budgetKw * 1000) / (group.voltage || 230);
   const perConnectorA = charging.length
     ? Math.max(6, Math.floor(totalA / charging.length))
     : Math.floor(totalA);
@@ -39,7 +41,7 @@ function rebalance(groupId: string) {
 
   if (charging.length)
     log.info(
-      `DLM "${group.name}": ${group.limitKw}kW ÷ ${charging.length} → ${perConnectorA}A each`,
+      `DLM "${group.name}": ${budgetKw}kW${group.drActive ? ' (DR active)' : ''} ÷ ${charging.length} → ${perConnectorA}A each`,
     );
 }
 
