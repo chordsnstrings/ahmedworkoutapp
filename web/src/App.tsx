@@ -10,6 +10,7 @@ import { LoadGroups } from './pages/LoadGroups';
 import { Alerts } from './pages/Alerts';
 import { Payments } from './pages/Payments';
 import { Roaming } from './pages/Roaming';
+import { PlugAndCharge } from './pages/PlugAndCharge';
 import { Assistant } from './pages/Assistant';
 import { Users } from './pages/Users';
 import { Logs } from './pages/Logs';
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/load" element={<LoadGroups />} />
         <Route path="/alerts" element={<Alerts />} />
         <Route path="/access" element={<Tokens />} />
+        <Route path="/plug-and-charge" element={<PlugAndCharge />} />
         <Route path="/tariffs" element={<Tariffs />} />
         <Route path="/payments" element={<Payments />} />
         <Route path="/roaming" element={<Roaming />} />

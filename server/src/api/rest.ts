@@ -368,6 +368,23 @@ export function createApiRouter() {
     res.json(store.listLogs(req.query.chargerId as string | undefined)),
   );
 
+  // ------------------------------------------ ISO 15118 Plug & Charge
+  api.get('/contracts', (_req, res) => res.json(store.listContracts()));
+  api.post('/contracts', operator, h((req, res) =>
+    res.status(201).json(store.upsertContract(req.body)),
+  ));
+  api.put('/contracts/:emaid', operator, h((req, res) =>
+    res.json(store.upsertContract({ ...req.body, emaid: req.params.emaid })),
+  ));
+  api.delete('/contracts/:emaid', operator, (req, res) => {
+    store.deleteContract(req.params.emaid);
+    res.status(204).end();
+  });
+  api.post('/chargers/:id/plug-and-charge', operator, h((req, res) => {
+    store.setPlugAndCharge(req.params.id, Boolean(req.body.enabled));
+    res.json(store.getCharger(req.params.id) ?? {});
+  }));
+
   // ---------------------------------------------------- tokens (RFID/access)
   api.get('/tokens', (_req, res) => res.json(store.listTokens()));
   api.post(

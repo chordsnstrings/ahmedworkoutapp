@@ -8,6 +8,8 @@ import type {
   ConnectorDTO,
   ConfigKeyDTO,
   ConnectorStatus,
+  ContractCertificateDTO,
+  ContractStatus,
   InvoiceDTO,
   LoadGroupDTO,
   LogEntryDTO,
@@ -36,6 +38,7 @@ class Store {
   private reservations = new Map<string, ReservationDTO>();
   private invoices = new Map<string, InvoiceDTO>();
   private partners = new Map<string, RoamingPartnerDTO>();
+  private contracts = new Map<string, ContractCertificateDTO>();
   private alerts: AlertDTO[] = [];
   private logs: LogEntryDTO[] = [];
   private ocppReservationSeq = 1000;
@@ -89,6 +92,19 @@ class Store {
       this.tokens.set(t.idTag, {
         ...t,
         status: 'Accepted',
+        createdAt: now,
+      });
+    }
+
+    for (const c of [
+      { emaid: 'DE-8AA-CA12B34-9', holder: 'Demo EV (BMW)' },
+      { emaid: 'NL-TNM-000000001-X', holder: 'Fleet vehicle' },
+    ]) {
+      this.contracts.set(c.emaid, {
+        id: randomUUID(),
+        emaid: c.emaid,
+        holder: c.holder,
+        status: 'Valid',
         createdAt: now,
       });
     }
@@ -677,6 +693,47 @@ class Store {
     if (!token) return 'Invalid';
     if (token.status === 'Blocked') return 'Blocked';
     if (token.expiryDate && Date.parse(token.expiryDate) < Date.now())
+      return 'Expired';
+    return 'Accepted';
+  }
+
+  // ----------------------------------------------- ISO 15118 Plug & Charge
+  setPlugAndCharge(chargerId: string, enabled: boolean) {
+    if (this.chargers.has(chargerId))
+      this.upsertCharger(chargerId, { plugAndCharge: enabled });
+  }
+  listContracts() {
+    return [...this.contracts.values()];
+  }
+  upsertContract(input: {
+    id?: string;
+    emaid: string;
+    holder: string;
+    status?: ContractStatus;
+    validTo?: string;
+  }): ContractCertificateDTO {
+    const existing = this.contracts.get(input.emaid);
+    const contract: ContractCertificateDTO = {
+      id: existing?.id ?? randomUUID(),
+      emaid: input.emaid,
+      holder: input.holder,
+      status: input.status ?? existing?.status ?? 'Valid',
+      validTo: input.validTo ?? existing?.validTo,
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
+    };
+    this.contracts.set(contract.emaid, contract);
+    return contract;
+  }
+  deleteContract(emaid: string) {
+    return this.contracts.delete(emaid);
+  }
+  /** Plug & Charge authorization decision for an ISO 15118 eMAID. */
+  authorizeContract(emaid: string | undefined): 'Accepted' | 'Blocked' | 'Invalid' | 'Expired' {
+    if (!emaid) return 'Invalid';
+    const c = this.contracts.get(emaid);
+    if (!c) return 'Invalid';
+    if (c.status === 'Revoked') return 'Blocked';
+    if (c.status === 'Expired' || (c.validTo && Date.parse(c.validTo) < Date.now()))
       return 'Expired';
     return 'Accepted';
   }

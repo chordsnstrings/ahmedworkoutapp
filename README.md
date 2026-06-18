@@ -33,6 +33,12 @@ web dashboard for Charge Point Operators (CPOs).
   gateway (or real Stripe PaymentIntents when `STRIPE_SECRET_KEY` is set), and
   **ad-hoc guest charging** through a public QR page (`/charge/<id>`).
 
+**ISO 15118 Plug & Charge**
+- Contract-certificate (eMAID) store with valid/revoked/expired states; OCPP 2.0.1
+  `Authorize` and `TransactionEvent` authorize eMAID id-tokens against it, plus a
+  `Get15118EVCertificate` handler. Per-charger Plug & Charge enrolment toggle.
+- The simulator can drive a Plug & Charge session: `--idType eMAID`.
+
 **Roaming (OCPI 2.2.1)**
 - A CPO-facing OCPI module exposing version discovery, credentials, **Locations**
   (chargers → EVSEs/connectors), **Sessions**, **CDRs**, and real-time **Token**

@@ -163,6 +163,18 @@ export interface TariffDTO {
   appliesToGroup?: string;
 }
 
+export type ContractStatus = 'Valid' | 'Revoked' | 'Expired';
+
+/** An ISO 15118 contract certificate (Plug & Charge), keyed by eMAID. */
+export interface ContractCertificateDTO {
+  id: string;
+  emaid: string;
+  holder: string;
+  status: ContractStatus;
+  validTo?: string;
+  createdAt: string;
+}
+
 export type ReservationStatus = 'Active' | 'Expired' | 'Cancelled' | 'Used';
 
 export interface ReservationDTO {

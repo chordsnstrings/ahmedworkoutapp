@@ -113,6 +113,28 @@ export function ChargerDetail() {
                 }
               />
               <Field label="Faults 24h" value={String(charger.faults24h ?? 0)} />
+              <Field
+                label="Plug & Charge"
+                value={
+                  <button
+                    disabled={readOnly}
+                    onClick={() =>
+                      run('Plug & Charge', () =>
+                        api.post(`/chargers/${id}/plug-and-charge`, {
+                          enabled: !charger.plugAndCharge,
+                        }),
+                      )
+                    }
+                    className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      charger.plugAndCharge
+                        ? 'bg-accent/15 text-accent'
+                        : 'bg-ink-600/60 text-slate-400'
+                    } disabled:opacity-60`}
+                  >
+                    {charger.plugAndCharge ? 'Enabled' : 'Disabled'}
+                  </button>
+                }
+              />
               <Field label="Boot reason" value={charger.bootReason ?? '—'} />
               <Field
                 label="Power limit"

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Activity,
+  BadgeCheck,
   BatteryCharging,
   Bell,
   CircleDollarSign,
@@ -37,6 +38,7 @@ const NAV: {
   { to: '/load', label: 'Load Management', icon: Gauge },
   { to: '/alerts', label: 'Alerts', icon: Bell },
   { to: '/access', label: 'Access / RFID', icon: KeyRound },
+  { to: '/plug-and-charge', label: 'Plug & Charge', icon: BadgeCheck },
   { to: '/tariffs', label: 'Tariffs', icon: CircleDollarSign },
   { to: '/payments', label: 'Payments', icon: CreditCard },
   { to: '/roaming', label: 'Roaming (OCPI)', icon: Globe },

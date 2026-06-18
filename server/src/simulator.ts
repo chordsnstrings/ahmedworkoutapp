@@ -17,7 +17,8 @@ function arg(name: string, fallback: string) {
 const id = arg('id', 'CP_SIM_1');
 const version = arg('version', '1.6') as OcppVersion;
 const baseUrl = arg('url', 'ws://localhost:3000');
-const idTag = arg('idTag', 'RFID-0001');
+const idType = arg('idType', 'ISO14443'); // ISO14443 (RFID) or eMAID (Plug & Charge)
+const idTag = arg('idTag', idType === 'eMAID' ? 'DE-8AA-CA12B34-9' : 'RFID-0001');
 
 const url = `${baseUrl.replace(/\/$/, '')}/ocpp/${id}`;
 const ws = new WebSocket(url, [OCPP_SUBPROTOCOLS[version]]);
@@ -82,7 +83,7 @@ async function startTransaction() {
       seqNo: 0,
       transactionInfo: { transactionId },
       evse: { id: 1, connectorId: 1 },
-      idToken: { idToken: idTag, type: 'ISO14443' },
+      idToken: { idToken: idTag, type: idType },
       meterValue: [meterValue()],
     });
   }

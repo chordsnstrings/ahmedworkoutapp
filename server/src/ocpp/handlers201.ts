@@ -14,6 +14,13 @@ const STATUS_MAP: Record<string, ConnectorStatus> = {
   Faulted: 'Faulted',
 };
 
+/** Authorize an OCPP 2.0.1 idToken — Plug & Charge (eMAID) or RFID. */
+function authorizeIdToken(idToken: any): ReturnType<typeof store.authorize> {
+  if (idToken?.type === 'eMAID')
+    return store.authorizeContract(idToken.idToken);
+  return store.authorize(idToken?.idToken);
+}
+
 function readSample(meterValue: any[], measurand: string): number | undefined {
   for (const mv of meterValue ?? []) {
     for (const sv of mv.sampledValue ?? []) {
@@ -64,8 +71,17 @@ export const handlers201: HandlerMap = {
   },
 
   Authorize(_conn, p) {
-    const decision = store.authorize(p.idToken?.idToken);
-    return { idTokenInfo: { status: decision } };
+    const decision = authorizeIdToken(p.idToken);
+    const res: Record<string, unknown> = { idTokenInfo: { status: decision } };
+    // ISO 15118 certificate presented → acknowledge the contract certificate.
+    if (p.certificate || p.iso15118CertificateHashData)
+      res.certificateStatus = decision === 'Accepted' ? 'Accepted' : 'Rejected';
+    return res;
+  },
+
+  /** ISO 15118 certificate installation/update during a Plug & Charge session. */
+  Get15118EVCertificate(_conn, _p) {
+    return { status: 'Accepted', exiResponse: '' };
   },
 
   TransactionEvent(conn, p) {
@@ -75,7 +91,7 @@ export const handlers201: HandlerMap = {
     const idTag = p.idToken?.idToken;
 
     if (p.eventType === 'Started') {
-      const decision = store.authorize(idTag);
+      const decision = authorizeIdToken(p.idToken);
       store.startTransaction({
         chargerId: conn.id,
         connectorId: evseId,
