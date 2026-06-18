@@ -572,6 +572,21 @@ export function createApiRouter() {
     res.json(store.getCharger(req.params.id) ?? {});
   }));
 
+  // ------------------------------------------- maintenance & lifecycle
+  api.get('/tickets', (_req, res) => res.json(store.listTickets()));
+  api.post('/tickets', h((req, res) => res.status(201).json(store.upsertTicket(req.body))));
+  api.put('/tickets/:id', h((req, res) =>
+    res.json(store.upsertTicket({ ...req.body, id: req.params.id })),
+  ));
+  api.delete('/tickets/:id', (req, res) => {
+    store.deleteTicket(req.params.id);
+    res.status(204).end();
+  });
+  api.post('/chargers/:id/lifecycle', h((req, res) => {
+    store.setLifecycle(req.params.id, req.body.lifecycle);
+    res.json(store.getCharger(req.params.id) ?? {});
+  }));
+
   // ------------------------------------------------- drivers & wallets
   api.get('/drivers', (_req, res) => res.json(store.listDrivers()));
   api.post('/drivers', h((req, res) => res.status(201).json(store.upsertDriver(req.body))));

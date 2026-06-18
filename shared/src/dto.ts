@@ -74,6 +74,29 @@ export interface ChargerDTO {
   lng?: number;
   address?: string;
   city?: string;
+  /** Asset lifecycle stage. */
+  lifecycle?: ChargerLifecycle;
+}
+
+export type ChargerLifecycle =
+  | 'commissioning'
+  | 'active'
+  | 'maintenance'
+  | 'retired';
+
+export type TicketStatus = 'open' | 'in_progress' | 'resolved';
+
+/** A maintenance ticket against a charge point. */
+export interface TicketDTO {
+  id: string;
+  chargerId: string;
+  title: string;
+  severity: AlertSeverity;
+  status: TicketStatus;
+  type: string;
+  note?: string;
+  createdAt: string;
+  resolvedAt?: string;
 }
 
 export interface ConfigKeyDTO {

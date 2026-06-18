@@ -8,6 +8,7 @@ import type {
   ConnectorDTO,
   ConfigKeyDTO,
   ConnectorStatus,
+  ChargerLifecycle,
   ContractCertificateDTO,
   DriverDTO,
   ContractStatus,
@@ -19,6 +20,7 @@ import type {
   RoamingPartnerDTO,
   TariffDTO,
   TenantDTO,
+  TicketDTO,
   TokenDTO,
   TransactionDTO,
   WalletEntryDTO,
@@ -49,6 +51,7 @@ class Store {
   private deliveries: WebhookDeliveryDTO[] = [];
   private drivers = new Map<string, DriverDTO>();
   private wallet: WalletEntryDTO[] = [];
+  private tickets = new Map<string, TicketDTO>();
   private alerts: AlertDTO[] = [];
   private logs: LogEntryDTO[] = [];
   private ocppReservationSeq = 1000;
@@ -441,6 +444,8 @@ class Store {
     this.alerts.unshift(alert);
     if (this.alerts.length > 200) this.alerts.pop();
     bus.emitEvent({ type: 'alert', alert });
+    // Critical faults open a maintenance ticket (deduped to one open per type).
+    if (severity === 'critical') this.createTicketFromAlert(alert);
     return alert;
   }
   listAlerts() {
@@ -460,6 +465,63 @@ class Store {
         a.acknowledged = true;
         bus.emitEvent({ type: 'alert', alert: a });
       }
+  }
+
+  // ------------------------------------------------ maintenance & lifecycle
+  setLifecycle(chargerId: string, lifecycle: ChargerLifecycle) {
+    if (this.chargers.has(chargerId)) this.upsertCharger(chargerId, { lifecycle });
+  }
+  listTickets() {
+    return [...this.tickets.values()].sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt),
+    );
+  }
+  upsertTicket(input: {
+    id?: string;
+    chargerId: string;
+    title: string;
+    severity?: AlertSeverity;
+    status?: TicketDTO['status'];
+    type?: string;
+    note?: string;
+  }): TicketDTO {
+    const id = input.id ?? randomUUID();
+    const existing = this.tickets.get(id);
+    const status = input.status ?? existing?.status ?? 'open';
+    const ticket: TicketDTO = {
+      id,
+      chargerId: input.chargerId,
+      title: input.title,
+      severity: input.severity ?? existing?.severity ?? 'warning',
+      status,
+      type: input.type ?? existing?.type ?? 'manual',
+      note: input.note ?? existing?.note,
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
+      resolvedAt:
+        status === 'resolved'
+          ? (existing?.resolvedAt ?? new Date().toISOString())
+          : undefined,
+    };
+    this.tickets.set(id, ticket);
+    return ticket;
+  }
+  deleteTicket(id: string) {
+    return this.tickets.delete(id);
+  }
+  private createTicketFromAlert(alert: AlertDTO) {
+    const dup = [...this.tickets.values()].find(
+      (t) =>
+        t.chargerId === alert.chargerId &&
+        t.type === alert.type &&
+        t.status !== 'resolved',
+    );
+    if (dup) return;
+    this.upsertTicket({
+      chargerId: alert.chargerId,
+      title: alert.message,
+      severity: alert.severity,
+      type: alert.type,
+    });
   }
 
   // -------------------------------------------------------------- load groups
@@ -1181,6 +1243,7 @@ class Store {
       webhooks: [...this.webhooks.values()],
       drivers: [...this.drivers.values()],
       wallet: this.wallet,
+      tickets: [...this.tickets.values()],
       alerts: this.alerts,
       audit: this.audit,
     };
@@ -1210,6 +1273,7 @@ class Store {
     fill(this.webhooks, s.webhooks ?? [], (w) => w.id);
     fill(this.drivers, s.drivers ?? [], (d) => d.id);
     this.wallet = s.wallet ?? [];
+    fill(this.tickets, s.tickets ?? [], (t) => t.id);
     this.alerts = s.alerts ?? [];
     this.audit = s.audit ?? [];
     // Reconnecting chargers are offline until they boot again.

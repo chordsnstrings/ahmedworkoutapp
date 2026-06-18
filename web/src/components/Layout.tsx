@@ -24,6 +24,7 @@ import {
   Users as UsersIcon,
   Wallet,
   Webhook,
+  Wrench,
   X,
   Zap,
 } from 'lucide-react';
@@ -47,6 +48,7 @@ const NAV: {
   { to: '/load', label: 'Load Management', icon: Gauge },
   { to: '/energy', label: 'Energy & DR', icon: Leaf },
   { to: '/alerts', label: 'Alerts', icon: Bell },
+  { to: '/maintenance', label: 'Maintenance', icon: Wrench },
   { to: '/access', label: 'Access / RFID', icon: KeyRound },
   { to: '/drivers', label: 'Drivers & Wallets', icon: Wallet },
   { to: '/plug-and-charge', label: 'Plug & Charge', icon: BadgeCheck },

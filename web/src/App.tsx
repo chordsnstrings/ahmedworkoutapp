@@ -12,6 +12,7 @@ import { Tariffs } from './pages/Tariffs';
 import { LoadGroups } from './pages/LoadGroups';
 import { Energy } from './pages/Energy';
 import { Alerts } from './pages/Alerts';
+import { Maintenance } from './pages/Maintenance';
 import { Payments } from './pages/Payments';
 import { Roaming } from './pages/Roaming';
 import { PlugAndCharge } from './pages/PlugAndCharge';
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/load" element={<LoadGroups />} />
         <Route path="/energy" element={<Energy />} />
         <Route path="/alerts" element={<Alerts />} />
+        <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/access" element={<Tokens />} />
         <Route path="/drivers" element={<Drivers />} />
         <Route path="/plug-and-charge" element={<PlugAndCharge />} />

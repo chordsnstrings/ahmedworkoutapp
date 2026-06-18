@@ -137,6 +137,26 @@ export function ChargerDetail() {
               />
               <Field label="Faults 24h" value={String(charger.faults24h ?? 0)} />
               <Field
+                label="Lifecycle"
+                value={
+                  <select
+                    value={charger.lifecycle ?? 'active'}
+                    disabled={readOnly}
+                    onChange={(e) =>
+                      run('Lifecycle', () =>
+                        api.post(`/chargers/${id}/lifecycle`, { lifecycle: e.target.value }),
+                      )
+                    }
+                    className="input py-1 text-sm"
+                  >
+                    <option value="commissioning">Commissioning</option>
+                    <option value="active">Active</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="retired">Retired</option>
+                  </select>
+                }
+              />
+              <Field
                 label="Plug & Charge"
                 value={
                   <button
