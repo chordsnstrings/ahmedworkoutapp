@@ -26,4 +26,12 @@ export const config = {
   /** OCPI party identity for this CPO. */
   ocpiCountryCode: process.env.OCPI_COUNTRY_CODE ?? 'US',
   ocpiPartyId: process.env.OCPI_PARTY_ID ?? 'VLT',
+  /** Postgres connection string. When set, state persists to Postgres. */
+  databaseUrl: process.env.DATABASE_URL ?? '',
+  /** Force TLS for the database connection (DigitalOcean managed DBs require it). */
+  databaseSsl:
+    /^(1|true|require)$/i.test(process.env.DATABASE_SSL ?? '') ||
+    /sslmode=require|ondigitalocean\.com/.test(process.env.DATABASE_URL ?? ''),
+  /** Directory served as the built web dashboard (single-service deploy). */
+  webDist: process.env.WEB_DIST ?? '',
 };

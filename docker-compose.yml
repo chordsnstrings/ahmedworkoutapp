@@ -1,0 +1,41 @@
+# Self-hosted deployment (e.g. a DigitalOcean Droplet) with PostgreSQL.
+#   cp .env.example .env   # then edit secrets
+#   docker compose up -d --build
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ocpp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-ocpp}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-ocpp}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgres://${POSTGRES_USER:-ocpp}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-ocpp}
+      JWT_SECRET: ${JWT_SECRET:?set a strong JWT_SECRET in .env}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      CURRENCY: ${CURRENCY:-USD}
+      OCPI_COUNTRY_CODE: ${OCPI_COUNTRY_CODE:-US}
+      OCPI_PARTY_ID: ${OCPI_PARTY_ID:-VLT}
+      # Optional integrations:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+    ports:
+      - '${HOST_PORT:-8080}:8080'
+
+volumes:
+  pgdata:

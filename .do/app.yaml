@@ -1,0 +1,60 @@
+# DigitalOcean App Platform spec.
+# Deploy with:  doctl apps create --spec .do/app.yaml
+# (or paste into the App Platform UI). Edit `github.repo`/`branch` and the
+# JWT_SECRET value first.
+#
+# IMPORTANT: instance_count must stay 1 — the CSMS holds charger WebSocket
+# connections and live state in-process (persisted to Postgres). Scale up
+# (larger instance) rather than out.
+name: ocpp-csms
+region: nyc
+services:
+  - name: csms
+    dockerfile_path: Dockerfile
+    source_dir: /
+    github:
+      repo: chordsnstrings/ahmedworkoutapp
+      branch: main
+      deploy_on_push: true
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xs
+    health_check:
+      http_path: /healthz
+      initial_delay_seconds: 25
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${db.DATABASE_URL}
+      - key: DATABASE_SSL
+        scope: RUN_TIME
+        value: 'true'
+      - key: PUBLIC_URL
+        scope: RUN_TIME
+        value: ${APP_URL}
+      - key: JWT_SECRET
+        scope: RUN_TIME
+        type: SECRET
+        value: REPLACE_WITH_A_STRONG_SECRET
+      - key: CURRENCY
+        scope: RUN_TIME
+        value: USD
+      - key: OCPI_COUNTRY_CODE
+        scope: RUN_TIME
+        value: US
+      - key: OCPI_PARTY_ID
+        scope: RUN_TIME
+        value: VLT
+      # Optional — add as encrypted SECRETs in the UI if used:
+      # - key: ANTHROPIC_API_KEY
+      #   type: SECRET
+      #   value: ...
+      # - key: STRIPE_SECRET_KEY
+      #   type: SECRET
+      #   value: ...
+
+databases:
+  - name: db
+    engine: PG
+    version: '16'
+    production: false

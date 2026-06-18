@@ -104,7 +104,16 @@ web dashboard for Charge Point Operators (CPOs).
 | Shared types | `@ocpp/shared` workspace package |
 | Tooling | npm workspaces, `tsx` |
 
-## Getting started
+## Deployment
+
+To run this for real (DigitalOcean App Platform or a Droplet, with PostgreSQL and
+TLS) and connect physical charge points, see **[DEPLOYMENT.md](DEPLOYMENT.md)** —
+it covers the Docker build, managed Postgres, env vars, and a step-by-step
+charge-point connection + verification guide. Production builds run as a single
+container that serves the API, the OCPP WebSocket, OCPI, and the dashboard
+together, persisting state to PostgreSQL.
+
+## Getting started (local dev)
 
 ```bash
 npm install
