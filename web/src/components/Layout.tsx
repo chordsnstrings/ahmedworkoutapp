@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { CommandPalette } from './CommandPalette';
 import {
   Activity,
   BadgeCheck,
@@ -19,6 +20,7 @@ import {
   FileBarChart,
   PlugZap,
   ScrollText,
+  Search,
   Settings as SettingsIcon,
   Sparkles,
   Users as UsersIcon,
@@ -206,8 +208,20 @@ function UserMenu() {
 
 export function Layout({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const { connected } = useLive();
   const location = useLocation();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
@@ -247,6 +261,16 @@ export function Layout({ children }: { children: ReactNode }) {
           >
             <Menu size={22} />
           </button>
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="flex-1 max-w-xs flex items-center gap-2 text-sm text-slate-500 bg-ink-700/60
+              hover:bg-ink-700 border border-ink-600/60 rounded-lg px-3 py-1.5 transition-colors"
+            title="Search (Ctrl/⌘ K)"
+          >
+            <Search size={15} />
+            <span className="hidden sm:inline">Search…</span>
+            <kbd className="ml-auto hidden sm:inline text-[10px] border border-ink-600 rounded px-1.5 py-0.5">⌘K</kbd>
+          </button>
           <div className="flex-1" />
           <div
             className={`hidden sm:flex items-center gap-2 text-xs font-medium px-2.5 py-1.5 rounded-full ${
@@ -275,6 +299,8 @@ export function Layout({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   );
 }
