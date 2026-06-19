@@ -44,16 +44,68 @@ export function ConnectorBadge({ status }: { status: ConnectorStatus }) {
   );
 }
 
+/** Minimal inline-SVG sparkline (no chart lib) for KPI cards and table cells. */
+export function Sparkline({
+  data,
+  color = '#22d3ee',
+  width = 96,
+  height = 28,
+}: {
+  data: number[];
+  color?: string;
+  width?: number;
+  height?: number;
+}) {
+  if (!data || data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const span = max - min || 1;
+  const step = width / (data.length - 1);
+  const pts = data
+    .map((v, i) => `${(i * step).toFixed(1)},${(height - ((v - min) / span) * height).toFixed(1)}`)
+    .join(' ');
+  return (
+    <svg width={width} height={height} className="overflow-visible">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Trend pill: signed % change, coloured by direction (invert for "lower is better"). */
+export function Trend({ pct, goodWhenUp = true }: { pct: number; goodWhenUp?: boolean }) {
+  if (!isFinite(pct) || pct === 0)
+    return <span className="text-xs text-slate-500">—</span>;
+  const up = pct > 0;
+  const good = up === goodWhenUp;
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 text-xs font-medium ${
+        good ? 'text-emerald-400' : 'text-red-400'
+      }`}
+    >
+      {up ? '▲' : '▼'} {Math.abs(pct).toFixed(0)}%
+    </span>
+  );
+}
+
 export function Stat({
   label,
   value,
   hint,
   icon,
+  trend,
+  goodWhenUp = true,
+  spark,
+  sparkColor,
 }: {
   label: string;
   value: ReactNode;
   hint?: string;
   icon?: ReactNode;
+  trend?: number;
+  goodWhenUp?: boolean;
+  spark?: number[];
+  sparkColor?: string;
 }) {
   return (
     <div className="card p-4">
@@ -61,10 +113,21 @@ export function Stat({
         <div className="label">{label}</div>
         {icon && <div className="text-accent">{icon}</div>}
       </div>
-      <div className="text-2xl font-bold text-white mt-2">{value}</div>
-      {hint && <div className="text-xs text-slate-400 mt-1">{hint}</div>}
+      <div className="flex items-end justify-between gap-2 mt-2">
+        <div className="text-2xl font-bold text-white tabular-nums tracking-tight">{value}</div>
+        {spark && <Sparkline data={spark} color={sparkColor} />}
+      </div>
+      <div className="flex items-center gap-2 mt-1">
+        {trend !== undefined && <Trend pct={trend} goodWhenUp={goodWhenUp} />}
+        {hint && <div className="text-xs text-slate-400">{hint}</div>}
+      </div>
     </div>
   );
+}
+
+/** Skeleton placeholder block to reduce layout shift while loading. */
+export function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse bg-ink-600/40 rounded ${className}`} />;
 }
 
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {

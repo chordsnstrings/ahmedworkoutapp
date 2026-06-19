@@ -1,5 +1,22 @@
 export function kwh(wh: number | undefined): string {
-  return `${((wh ?? 0) / 1000).toFixed(2)} kWh`;
+  const v = (wh ?? 0) / 1000;
+  return v >= 10000 ? `${compact(v)} kWh` : `${v.toFixed(2)} kWh`;
+}
+
+/** Thousands-separated integer/decimal. */
+export function num(n: number | undefined, digits = 0): string {
+  return (n ?? 0).toLocaleString(undefined, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
+/** Compact large numbers: 1234 → 1.2k, 1_200_000 → 1.2M. */
+export function compact(n: number | undefined): string {
+  return new Intl.NumberFormat(undefined, {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(n ?? 0);
 }
 
 export function money(amount: number | undefined, currency = 'USD'): string {

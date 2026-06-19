@@ -16,7 +16,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useLive, useScoped } from '../store/live';
-import { computeMetrics } from '../lib/analytics';
+import { computeMetrics, trendPct } from '../lib/analytics';
 import { kwh, money, timeAgo } from '../lib/format';
 import { PageHeader, Stat } from '../components/ui';
 
@@ -27,6 +27,9 @@ export function Overview() {
     () => computeMetrics(chargers, transactions),
     [chargers, transactions],
   );
+  const energySeries = m.byDay.map((d) => d.energyWh);
+  const revenueSeries = m.byDay.map((d) => d.revenue);
+  const sessionSeries = m.byDay.map((d) => d.sessions);
 
   const recent = transactions.slice(0, 6);
   const chargingNow = chargers
@@ -50,19 +53,26 @@ export function Overview() {
         <Stat
           label="Active sessions"
           value={m.sessionsActive}
-          hint={`${m.sessionsToday} started today`}
+          hint={`${m.sessionsToday} today`}
+          trend={trendPct(sessionSeries)}
+          spark={sessionSeries}
           icon={<BatteryCharging size={18} />}
         />
         <Stat
           label="Energy today"
           value={kwh(m.energyTodayWh)}
           hint={`${kwh(m.energyTotalWh)} all time`}
+          trend={trendPct(energySeries)}
+          spark={energySeries}
           icon={<Zap size={18} />}
         />
         <Stat
           label="Revenue today"
           value={money(m.revenueToday, currency)}
           hint={`${money(m.revenueTotal, currency)} all time`}
+          trend={trendPct(revenueSeries)}
+          spark={revenueSeries}
+          sparkColor="#34d399"
           icon={<CircleDollarSign size={18} />}
         />
       </div>

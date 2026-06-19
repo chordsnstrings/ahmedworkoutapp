@@ -11,7 +11,16 @@ export interface Metrics {
   energyTotalWh: number;
   revenueToday: number;
   revenueTotal: number;
-  byDay: { date: string; label: string; energyWh: number; revenue: number }[];
+  byDay: { date: string; label: string; energyWh: number; revenue: number; sessions: number }[];
+}
+
+/** Percent change of the last `window` days vs the prior `window` days. */
+export function trendPct(series: number[], window = 7): number {
+  if (series.length < window * 2) return 0;
+  const recent = series.slice(-window).reduce((a, b) => a + b, 0);
+  const prior = series.slice(-window * 2, -window).reduce((a, b) => a + b, 0);
+  if (prior === 0) return recent > 0 ? 100 : 0;
+  return ((recent - prior) / prior) * 100;
 }
 
 /** Derive dashboard metrics from a (tenant-scoped) slice of live data. */
@@ -20,12 +29,12 @@ export function computeMetrics(
   transactions: TransactionDTO[],
 ): Metrics {
   const todayKey = new Date().toISOString().slice(0, 10);
-  const days = new Map<string, { energyWh: number; revenue: number }>();
+  const days = new Map<string, { energyWh: number; revenue: number; sessions: number }>();
   for (let i = 13; i >= 0; i--) {
     const key = new Date(Date.now() - i * 86_400_000)
       .toISOString()
       .slice(0, 10);
-    days.set(key, { energyWh: 0, revenue: 0 });
+    days.set(key, { energyWh: 0, revenue: 0, sessions: 0 });
   }
 
   let energyTotal = 0;
@@ -42,6 +51,7 @@ export function computeMetrics(
     if (bucket) {
       bucket.energyWh += tx.energyWh;
       bucket.revenue += tx.cost ?? 0;
+      bucket.sessions += 1;
     }
     if (key === todayKey) {
       energyToday += tx.energyWh;
@@ -71,6 +81,7 @@ export function computeMetrics(
       }),
       energyWh: v.energyWh,
       revenue: Math.round(v.revenue * 100) / 100,
+      sessions: v.sessions,
     })),
   };
 }
