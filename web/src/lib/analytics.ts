@@ -87,27 +87,38 @@ export function computeMetrics(
 }
 
 export interface AdvancedMetrics {
-  /** Connector busy-time over the last 7 days, as a percentage. */
+  /** Number of days the window spans (mirrors the requested range). */
+  rangeDays: number;
+  /** Connector busy-time over the selected range, as a percentage. */
   utilizationPct: number;
   avgKwh: number;
   avgDurationMin: number;
+  sessions: number;
   /** Estimated CO2 avoided vs an equivalent ICE vehicle (kg). */
   co2Kg: number;
   peakKw: number;
   byHour: { hour: number; label: string; sessions: number; energyWh: number }[];
+  byDay: { date: string; label: string; energyWh: number; revenue: number; sessions: number }[];
+  byWeekday: { label: string; sessions: number; energyWh: number }[];
   byOperator: { id: string; name: string; energyWh: number; revenue: number; sessions: number }[];
 }
 
 /** Rough CO2 avoided per kWh delivered vs a comparable ICE car (kg/kWh). */
 const CO2_KG_PER_KWH = 0.6;
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 export function computeAdvanced(
   chargers: ChargerDTO[],
   transactions: TransactionDTO[],
   tenants: TenantDTO[],
+  rangeDays = 14,
 ): AdvancedMetrics {
-  const ended = transactions.filter((t) => t.state === 'Ended');
   const connectors = chargers.reduce((n, c) => n + Math.max(1, c.connectors.length), 0);
+  const since = Date.now() - rangeDays * 86_400_000;
+  const ended = transactions.filter(
+    (t) => t.state === 'Ended' && Date.parse(t.startedAt) >= since,
+  );
 
   const byHour = Array.from({ length: 24 }, (_, h) => ({
     hour: h,
@@ -115,9 +126,15 @@ export function computeAdvanced(
     sessions: 0,
     energyWh: 0,
   }));
+  const byWeekday = WEEKDAYS.map((label) => ({ label, sessions: 0, energyWh: 0 }));
 
-  const weekAgo = Date.now() - 7 * 86_400_000;
-  let weekSessionMs = 0;
+  const days = new Map<string, { energyWh: number; revenue: number; sessions: number }>();
+  for (let i = rangeDays - 1; i >= 0; i--) {
+    const key = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10);
+    days.set(key, { energyWh: 0, revenue: 0, sessions: 0 });
+  }
+
+  let rangeSessionMs = 0;
   let totalEnergy = 0;
   let totalDurMs = 0;
   let peakW = 0;
@@ -128,12 +145,22 @@ export function computeAdvanced(
   for (const t of ended) {
     const start = Date.parse(t.startedAt);
     const end = t.endedAt ? Date.parse(t.endedAt) : start;
-    const h = byHour[new Date(start).getHours()];
+    const d = new Date(start);
+    const h = byHour[d.getHours()];
     h.sessions++;
     h.energyWh += t.energyWh;
+    const wd = byWeekday[d.getDay()];
+    wd.sessions++;
+    wd.energyWh += t.energyWh;
+    const dayBucket = days.get(t.startedAt.slice(0, 10));
+    if (dayBucket) {
+      dayBucket.energyWh += t.energyWh;
+      dayBucket.revenue += t.cost ?? 0;
+      dayBucket.sessions += 1;
+    }
     totalEnergy += t.energyWh;
     totalDurMs += end - start;
-    if (start >= weekAgo) weekSessionMs += end - start;
+    rangeSessionMs += end - start;
     for (const s of t.samples ?? []) peakW = Math.max(peakW, s.powerW);
 
     const tid = chargerTenant.get(t.chargerId) ?? 'unassigned';
@@ -146,16 +173,26 @@ export function computeAdvanced(
 
   const utilizationPct =
     connectors > 0
-      ? Math.min(100, Math.round((weekSessionMs / (connectors * 7 * 86_400_000)) * 1000) / 10)
+      ? Math.min(100, Math.round((rangeSessionMs / (connectors * rangeDays * 86_400_000)) * 1000) / 10)
       : 0;
 
   return {
+    rangeDays,
     utilizationPct,
     avgKwh: ended.length ? Math.round((totalEnergy / ended.length / 1000) * 100) / 100 : 0,
     avgDurationMin: ended.length ? Math.round(totalDurMs / ended.length / 60000) : 0,
+    sessions: ended.length,
     co2Kg: Math.round((totalEnergy / 1000) * CO2_KG_PER_KWH),
     peakKw: Math.round((peakW / 1000) * 10) / 10,
     byHour,
+    byDay: [...days.entries()].map(([date, v]) => ({
+      date,
+      label: new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      energyWh: v.energyWh,
+      revenue: Math.round(v.revenue * 100) / 100,
+      sessions: v.sessions,
+    })),
+    byWeekday,
     byOperator: [...opMap.entries()]
       .map(([id, v]) => ({
         id,
