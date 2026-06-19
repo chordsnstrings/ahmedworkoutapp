@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
 import type { BrandingDTO } from '@ocpp/shared';
 import { api } from '../lib/api';
@@ -11,6 +11,12 @@ export function Settings() {
   const { branding, setBranding } = useLive();
   const [form, setForm] = useState<BrandingDTO>(branding);
   const [saved, setSaved] = useState(false);
+
+  // Keep the form in sync with live branding, which loads asynchronously after
+  // the initial render (otherwise the form sticks on the fallback default).
+  useEffect(() => {
+    setForm(branding);
+  }, [branding]);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();

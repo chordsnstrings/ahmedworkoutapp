@@ -34,36 +34,73 @@ import type { UserRole } from '@ocpp/shared';
 import { ALL_TENANTS, useLive, useScoped } from '../store/live';
 import { useAuth } from '../store/auth';
 
-const NAV: {
+type NavItem = {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
   end?: boolean;
   role?: UserRole;
-}[] = [
-  { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/analytics', label: 'Analytics', icon: LineChart },
-  { to: '/assistant', label: 'Ops Assistant', icon: Sparkles },
-  { to: '/chargers', label: 'Charge Points', icon: PlugZap },
-  { to: '/map', label: 'Station Map', icon: MapIcon },
-  { to: '/transactions', label: 'Sessions', icon: BatteryCharging },
-  { to: '/load', label: 'Load Management', icon: Gauge },
-  { to: '/energy', label: 'Energy & DR', icon: Leaf },
-  { to: '/alerts', label: 'Alerts', icon: Bell },
-  { to: '/maintenance', label: 'Maintenance', icon: Wrench },
-  { to: '/access', label: 'Access / RFID', icon: KeyRound },
-  { to: '/drivers', label: 'Drivers & Wallets', icon: Wallet },
-  { to: '/plug-and-charge', label: 'Plug & Charge', icon: BadgeCheck },
-  { to: '/tariffs', label: 'Tariffs', icon: CircleDollarSign },
-  { to: '/payments', label: 'Payments', icon: CreditCard },
-  { to: '/roaming', label: 'Roaming (OCPI)', icon: Globe },
-  { to: '/reports', label: 'Reports', icon: FileBarChart },
-  { to: '/logs', label: 'Live OCPP Log', icon: Activity },
-  { to: '/observability', label: 'Observability', icon: Gauge },
-  { to: '/audit', label: 'Audit Log', icon: ScrollText, role: 'admin' },
-  { to: '/notifications', label: 'Notifications', icon: Webhook, role: 'admin' },
-  { to: '/users', label: 'Users & Roles', icon: UsersIcon, role: 'admin' },
-  { to: '/settings', label: 'Settings', icon: SettingsIcon },
+};
+
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'Monitor',
+    items: [
+      { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
+      { to: '/analytics', label: 'Analytics', icon: LineChart },
+      { to: '/assistant', label: 'Ops Assistant', icon: Sparkles },
+    ],
+  },
+  {
+    label: 'Charging Network',
+    items: [
+      { to: '/chargers', label: 'Charge Points', icon: PlugZap },
+      { to: '/map', label: 'Station Map', icon: MapIcon },
+      { to: '/transactions', label: 'Sessions', icon: BatteryCharging },
+    ],
+  },
+  {
+    label: 'Energy',
+    items: [
+      { to: '/load', label: 'Load Management', icon: Gauge },
+      { to: '/energy', label: 'Energy & DR', icon: Leaf },
+    ],
+  },
+  {
+    label: 'Service & Health',
+    items: [
+      { to: '/alerts', label: 'Alerts', icon: Bell },
+      { to: '/maintenance', label: 'Maintenance', icon: Wrench },
+      { to: '/logs', label: 'Live OCPP Log', icon: Activity },
+      { to: '/observability', label: 'Observability', icon: Gauge },
+    ],
+  },
+  {
+    label: 'Drivers & Access',
+    items: [
+      { to: '/access', label: 'Access / RFID', icon: KeyRound },
+      { to: '/drivers', label: 'Drivers & Wallets', icon: Wallet },
+      { to: '/plug-and-charge', label: 'Plug & Charge', icon: BadgeCheck },
+    ],
+  },
+  {
+    label: 'Billing',
+    items: [
+      { to: '/tariffs', label: 'Tariffs', icon: CircleDollarSign },
+      { to: '/payments', label: 'Payments', icon: CreditCard },
+      { to: '/roaming', label: 'Roaming (OCPI)', icon: Globe },
+      { to: '/reports', label: 'Reports', icon: FileBarChart },
+    ],
+  },
+  {
+    label: 'Administration',
+    items: [
+      { to: '/audit', label: 'Audit Log', icon: ScrollText, role: 'admin' },
+      { to: '/notifications', label: 'Notifications', icon: Webhook, role: 'admin' },
+      { to: '/users', label: 'Users & Roles', icon: UsersIcon, role: 'admin' },
+      { to: '/settings', label: 'Settings', icon: SettingsIcon },
+    ],
+  },
 ];
 
 function OperatorSwitcher() {
@@ -99,7 +136,10 @@ function OperatorSwitcher() {
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { branding } = useLive();
   const { can } = useAuth();
-  const items = NAV.filter((n) => !n.role || can(n.role));
+  const groups = NAV_GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((n) => !n.role || can(n.role)),
+  })).filter((g) => g.items.length > 0);
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-2.5 px-5 h-16 border-b border-ink-600/60">
@@ -115,24 +155,31 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         </div>
       </div>
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {items.map(({ to, label, icon: Icon, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-accent/15 text-accent'
-                  : 'text-slate-400 hover:text-slate-100 hover:bg-ink-600/50'
-              }`
-            }
-          >
-            <Icon size={18} />
-            {label}
-          </NavLink>
+      <nav className="flex-1 p-3 space-y-5 overflow-y-auto">
+        {groups.map((group) => (
+          <div key={group.label} className="space-y-1">
+            <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+              {group.label}
+            </div>
+            {group.items.map(({ to, label, icon: Icon, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                onClick={onNavigate}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-accent/15 text-accent'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-ink-600/50'
+                  }`
+                }
+              >
+                <Icon size={18} />
+                {label}
+              </NavLink>
+            ))}
+          </div>
         ))}
       </nav>
       <div className="p-4 text-[11px] text-slate-600 border-t border-ink-600/60">

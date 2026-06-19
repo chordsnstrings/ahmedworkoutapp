@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png'],
       manifest: {
-        name: 'OCPP CSMS Dashboard',
-        short_name: 'OCPP CSMS',
+        name: 'VoltGrid CSMS',
+        short_name: 'VoltGrid',
         description: 'Central System management for OCPP 1.6 & 2.0.1 charge points',
         theme_color: '#0a0e14',
         background_color: '#0a0e14',

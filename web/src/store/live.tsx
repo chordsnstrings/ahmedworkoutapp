@@ -61,7 +61,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
   const [demandResponse, setDemandResponse] = useState<DemandResponseEventDTO[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsDTO | null>(null);
   const [branding, setBranding] = useState<BrandingDTO>({
-    platformName: 'OCPP CSMS',
+    platformName: 'VoltGrid CSMS',
     accentColor: '#22d3ee',
     currency: 'USD',
   });

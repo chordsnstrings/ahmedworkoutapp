@@ -36,7 +36,7 @@ export function Login() {
             <Zap size={24} />
           </div>
           <div>
-            <div className="font-bold text-white text-lg leading-tight">OCPP CSMS</div>
+            <div className="font-bold text-white text-lg leading-tight">VoltGrid CSMS</div>
             <div className="text-xs text-slate-500">Operator console</div>
           </div>
         </div>

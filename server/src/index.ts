@@ -33,7 +33,7 @@ async function bootstrap() {
 
   app.get('/api-info', (_req, res) =>
     res.json({
-      name: 'OCPP CSMS',
+      name: 'VoltGrid CSMS',
       ocpp: ['1.6', '2.0.1'],
       websocket: `${config.publicUrl.replace(/^http/, 'ws')}/ocpp/<chargePointId>`,
     }),
