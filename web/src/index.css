@@ -14,6 +14,22 @@ body,
 
 body {
   @apply bg-ink-900 text-slate-200 font-sans antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  @apply bg-accent/30 text-white;
+}
+
+/* Consistent keyboard focus visibility across all interactive elements.
+   Pointer clicks stay clean; only keyboard navigation shows the ring. */
+a:focus-visible,
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  @apply outline-none ring-2 ring-accent/70 rounded-md;
 }
 
 ::-webkit-scrollbar {
