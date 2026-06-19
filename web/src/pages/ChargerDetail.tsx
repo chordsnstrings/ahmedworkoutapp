@@ -55,6 +55,7 @@ export function ChargerDetail() {
   ]);
   const [composite, setComposite] = useState<{ startPeriod: number; limit: number }[] | null>(null);
   const [displayMsg, setDisplayMsg] = useState('Welcome — tap to start charging');
+  const [tab, setTab] = useState<'control' | 'smart' | 'maintenance' | 'display'>('control');
 
   const activeReservations = reservations.filter(
     (r) => r.chargerId === id && r.status === 'Active',
@@ -305,14 +306,33 @@ export function ChargerDetail() {
           </div>
         </div>
 
-        {/* Right: command panel */}
+        {/* Right: command panel (grouped into tabs to reduce density) */}
         <div className="space-y-4">
-          {readOnly && (
+          {readOnly ? (
             <div className="card p-4 text-sm text-slate-400">
               You have read-only access. Remote control requires an operator role.
             </div>
+          ) : (
+            <div className="flex bg-ink-700 rounded-lg p-1 text-xs sm:text-sm">
+              {([
+                ['control', 'Control'],
+                ['smart', 'Smart charging'],
+                ['maintenance', 'Maintenance'],
+                ['display', 'Display'],
+              ] as const).map(([k, label]) => (
+                <button
+                  key={k}
+                  onClick={() => setTab(k)}
+                  className={`flex-1 px-2 py-1.5 rounded-md transition-colors ${
+                    tab === k ? 'bg-accent text-ink-900 font-medium' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           )}
-          <div className={`card p-4 sm:p-5 ${readOnly ? 'hidden' : ''}`}>
+          <div className={`card p-4 sm:p-5 ${readOnly || tab !== 'control' ? 'hidden' : ''}`}>
             <h2 className="font-semibold text-white mb-3">Remote control</h2>
             {!online && (
               <p className="text-xs text-amber-300 mb-3">
@@ -456,7 +476,7 @@ export function ChargerDetail() {
             </div>
           </div>
 
-          <div className={`card p-4 sm:p-5 ${readOnly ? 'hidden' : ''}`}>
+          <div className={`card p-4 sm:p-5 ${readOnly || tab !== 'control' ? 'hidden' : ''}`}>
             <h2 className="font-semibold text-white mb-3">Reservations</h2>
             <div className="flex items-end gap-2">
               <label className="block flex-1">
@@ -517,7 +537,7 @@ export function ChargerDetail() {
             )}
           </div>
 
-          <div className={`card p-4 sm:p-5 ${readOnly ? 'hidden' : ''}`}>
+          <div className={`card p-4 sm:p-5 ${readOnly || tab !== 'maintenance' ? 'hidden' : ''}`}>
             <h2 className="font-semibold text-white mb-3">
               Configuration &amp; firmware
             </h2>
@@ -660,7 +680,7 @@ export function ChargerDetail() {
             </div>
           </div>
 
-          <div className={`card p-4 sm:p-5 ${readOnly ? 'hidden' : ''}`}>
+          <div className={`card p-4 sm:p-5 ${readOnly || tab !== 'smart' ? 'hidden' : ''}`}>
             <h2 className="font-semibold text-white mb-3">Smart charging schedule</h2>
             <div className="space-y-2">
               {periods.map((p, i) => (
@@ -746,7 +766,7 @@ export function ChargerDetail() {
             {composite && <ScheduleChart periods={composite} />}
           </div>
 
-          <div className={`card p-4 sm:p-5 ${readOnly ? 'hidden' : ''}`}>
+          <div className={`card p-4 sm:p-5 ${readOnly || tab !== 'display' ? 'hidden' : ''}`}>
             <h2 className="font-semibold text-white mb-3">Driver display</h2>
             <input
               value={displayMsg}
