@@ -45,10 +45,13 @@ export function Observability() {
   if (!m) return <PageHeader title="Observability" subtitle="Loading CSMS metrics…" />;
 
   const kinds = [
-    { k: 'CALL', color: 'text-sky-300' },
-    { k: 'CALLRESULT', color: 'text-emerald-300' },
-    { k: 'CALLERROR', color: 'text-red-300' },
+    { k: 'CALL', color: 'text-sky-300', bar: '#38bdf8' },
+    { k: 'CALLRESULT', color: 'text-emerald-300', bar: '#34d399' },
+    { k: 'CALLERROR', color: 'text-red-300', bar: '#f87171' },
   ];
+  const kindMax = Math.max(1, ...kinds.map(({ k }) => m.byKind[k] ?? 0));
+  const dirTotal = Math.max(1, m.inbound + m.outbound);
+  const inPct = Math.round((m.inbound / dirTotal) * 100);
 
   return (
     <>
@@ -88,25 +91,41 @@ export function Observability() {
       <div className="grid sm:grid-cols-2 gap-4 mt-4">
         <div className="card p-4 sm:p-5">
           <h2 className="font-semibold text-white mb-3">By message type</h2>
-          <ul className="space-y-2 text-sm">
-            {kinds.map(({ k, color }) => (
-              <li key={k} className="flex items-center justify-between">
-                <span className={`font-mono ${color}`}>{k}</span>
-                <span className="text-slate-300">{(m.byKind[k] ?? 0).toLocaleString()}</span>
-              </li>
-            ))}
+          <ul className="space-y-3 text-sm">
+            {kinds.map(({ k, color, bar }) => {
+              const v = m.byKind[k] ?? 0;
+              return (
+                <li key={k}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`font-mono ${color}`}>{k}</span>
+                    <span className="text-slate-300 tabular-nums">{v.toLocaleString()}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-ink-600/50 overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${(v / kindMax) * 100}%`, background: bar }} />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
         <div className="card p-4 sm:p-5">
           <h2 className="font-semibold text-white mb-3">Direction</h2>
+          <div className="flex h-2 rounded-full overflow-hidden mb-4">
+            <div className="bg-cyan-400" style={{ width: `${inPct}%` }} />
+            <div className="bg-violet-400" style={{ width: `${100 - inPct}%` }} />
+          </div>
           <ul className="space-y-2 text-sm">
             <li className="flex items-center justify-between">
-              <span className="text-slate-400">← Inbound (from chargers)</span>
-              <span className="text-slate-200">{m.inbound.toLocaleString()}</span>
+              <span className="flex items-center gap-2 text-slate-400">
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" /> Inbound (from chargers)
+              </span>
+              <span className="text-slate-200 tabular-nums">{m.inbound.toLocaleString()} · {inPct}%</span>
             </li>
             <li className="flex items-center justify-between">
-              <span className="text-slate-400">→ Outbound (to chargers)</span>
-              <span className="text-slate-200">{m.outbound.toLocaleString()}</span>
+              <span className="flex items-center gap-2 text-slate-400">
+                <span className="w-2.5 h-2.5 rounded-full bg-violet-400" /> Outbound (to chargers)
+              </span>
+              <span className="text-slate-200 tabular-nums">{m.outbound.toLocaleString()} · {100 - inPct}%</span>
             </li>
           </ul>
         </div>
