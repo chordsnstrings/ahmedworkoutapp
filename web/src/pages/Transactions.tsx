@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import type { TransactionDTO } from '@ocpp/shared';
 import { useScoped } from '../store/live';
 import { dateTime, duration, kwh, money } from '../lib/format';
+import { DataTable, type Column } from '../components/DataTable';
 import { EmptyState, PageHeader, Stat } from '../components/ui';
 
 export function Transactions() {
   const { transactions, currency } = useScoped();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<'all' | 'active' | 'ended'>('all');
   const [q, setQ] = useState('');
 
@@ -23,13 +26,77 @@ export function Transactions() {
         )
         .filter((t) =>
           q
-            ? `${t.chargerId} ${t.idTag ?? ''} ${t.id}`
-                .toLowerCase()
-                .includes(q.toLowerCase())
+            ? `${t.chargerId} ${t.idTag ?? ''} ${t.id}`.toLowerCase().includes(q.toLowerCase())
             : true,
         ),
     [transactions, tab, q],
   );
+
+  const columns: Column<TransactionDTO>[] = [
+    {
+      key: 'chargerId',
+      header: 'Charger',
+      sortable: true,
+      render: (t) => <span className="text-slate-100 font-medium">{t.chargerId}</span>,
+    },
+    {
+      key: 'idTag',
+      header: 'ID Tag',
+      render: (t) => <span className="text-slate-400 font-mono text-xs">{t.idTag ?? '—'}</span>,
+    },
+    {
+      key: 'startedAt',
+      header: 'Started',
+      sortable: true,
+      render: (t) => <span className="text-slate-400">{dateTime(t.startedAt)}</span>,
+    },
+    {
+      key: 'duration',
+      header: 'Duration',
+      sortValue: (t) => (t.endedAt ? Date.parse(t.endedAt) : Date.now()) - Date.parse(t.startedAt),
+      sortable: true,
+      render: (t) => <span className="text-slate-400">{duration(t.startedAt, t.endedAt)}</span>,
+    },
+    {
+      key: 'energyWh',
+      header: 'Energy',
+      align: 'right',
+      sortable: true,
+      render: (t) => <span className="text-slate-200">{kwh(t.energyWh)}</span>,
+    },
+    {
+      key: 'soc',
+      header: 'SoC',
+      align: 'right',
+      sortable: true,
+      render: (t) => <span className="text-slate-400">{t.soc != null ? `${t.soc}%` : '—'}</span>,
+    },
+    {
+      key: 'state',
+      header: 'Status',
+      render: (t) =>
+        t.state === 'Active' ? (
+          <span className="inline-flex items-center gap-1.5 text-accent text-xs font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+            Charging
+          </span>
+        ) : (
+          <span className="text-slate-500 text-xs">{t.stopReason ?? 'Ended'}</span>
+        ),
+    },
+    {
+      key: 'cost',
+      header: 'Cost',
+      align: 'right',
+      sortable: true,
+      sortValue: (t) => t.cost ?? 0,
+      render: (t) => (
+        <span className="text-slate-200">
+          {t.state === 'Active' ? '—' : money(t.cost, t.currency ?? currency)}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <>
@@ -71,66 +138,15 @@ export function Transactions() {
         />
       </div>
 
-      {rows.length === 0 ? (
-        <EmptyState title="No sessions" />
-      ) : (
-        <div className="card overflow-x-auto">
-          <table className="w-full text-sm min-w-[720px]">
-            <thead>
-              <tr className="text-left text-xs text-slate-500 uppercase border-b border-ink-600/60">
-                <th className="font-semibold px-4 py-3">Charger</th>
-                <th className="font-semibold px-4 py-3">ID Tag</th>
-                <th className="font-semibold px-4 py-3">Started</th>
-                <th className="font-semibold px-4 py-3">Duration</th>
-                <th className="font-semibold px-4 py-3">Energy</th>
-                <th className="font-semibold px-4 py-3">SoC</th>
-                <th className="font-semibold px-4 py-3">Status</th>
-                <th className="font-semibold px-4 py-3 text-right">Cost</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-ink-600/40">
-              {rows.map((tx) => (
-                <tr key={tx.id} className="hover:bg-ink-700/40">
-                  <td className="px-4 py-3">
-                    <Link
-                      to={`/chargers/${tx.chargerId}`}
-                      className="text-slate-100 hover:text-accent font-medium"
-                    >
-                      {tx.chargerId}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-slate-400 font-mono text-xs">
-                    {tx.idTag ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-slate-400">{dateTime(tx.startedAt)}</td>
-                  <td className="px-4 py-3 text-slate-400">
-                    {duration(tx.startedAt, tx.endedAt)}
-                  </td>
-                  <td className="px-4 py-3 text-slate-200">{kwh(tx.energyWh)}</td>
-                  <td className="px-4 py-3 text-slate-400">
-                    {tx.soc != null ? `${tx.soc}%` : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    {tx.state === 'Active' ? (
-                      <span className="inline-flex items-center gap-1.5 text-accent text-xs font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                        Charging
-                      </span>
-                    ) : (
-                      <span className="text-slate-500 text-xs">{tx.stopReason ?? 'Ended'}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right text-slate-200">
-                    {tx.state === 'Active'
-                      ? '—'
-                      : money(tx.cost, tx.currency ?? currency)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(t) => t.id}
+        pageSize={25}
+        initialSort={{ key: 'startedAt', dir: 'desc' }}
+        onRowClick={(t) => navigate(`/chargers/${t.chargerId}`)}
+        empty={<EmptyState title="No sessions" />}
+      />
     </>
   );
 }
