@@ -7,6 +7,7 @@ import { useAuth } from '../store/auth';
 import { useLive } from '../store/live';
 import { ALL_TENANTS } from '../store/live';
 import { dateTime, money } from '../lib/format';
+import { DataTable } from '../components/DataTable';
 import { EmptyState, PageHeader, Stat } from '../components/ui';
 
 export function Payments() {
@@ -64,63 +65,82 @@ export function Payments() {
         <Stat label="Invoices" value={scoped.length} />
       </div>
 
-      {scoped.length === 0 ? (
-        <EmptyState title="No invoices" hint="Invoices are generated when paid sessions end." />
-      ) : (
-        <div className="card overflow-x-auto">
-          <table className="w-full text-sm min-w-[680px]">
-            <thead>
-              <tr className="text-left text-xs text-slate-500 uppercase border-b border-ink-600/60">
-                <th className="font-semibold px-4 py-3">Invoice</th>
-                <th className="font-semibold px-4 py-3">Charger</th>
-                <th className="font-semibold px-4 py-3">Date</th>
-                <th className="font-semibold px-4 py-3">Amount</th>
-                <th className="font-semibold px-4 py-3">Status</th>
-                <th className="font-semibold px-4 py-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-ink-600/40">
-              {scoped.map((inv) => (
-                <tr key={inv.id} className="hover:bg-ink-700/40">
-                  <td className="px-4 py-3 font-mono text-slate-200 flex items-center gap-2">
-                    <Receipt size={14} className="text-slate-500" />
-                    {inv.number}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link to={`/chargers/${inv.chargerId}`} className="text-slate-300 hover:text-accent">
-                      {inv.chargerId}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-slate-400">{dateTime(inv.createdAt)}</td>
-                  <td className="px-4 py-3 text-slate-200">{money(inv.amount, inv.currency)}</td>
-                  <td className="px-4 py-3">
-                    {inv.status === 'paid' ? (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300">
-                        Paid{inv.method ? ` · ${inv.method}` : ''}
-                      </span>
-                    ) : (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300">
-                        Pending
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {inv.status === 'pending' && can('operator') && (
-                      <button
-                        onClick={() => pay(inv)}
-                        disabled={busy === inv.id}
-                        className="btn-ghost py-1 px-2 text-xs"
-                      >
-                        <CreditCard size={14} /> Collect
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        columns={[
+          {
+            key: 'number',
+            header: 'Invoice',
+            sortable: true,
+            render: (inv) => (
+              <span className="font-mono text-slate-200 inline-flex items-center gap-2">
+                <Receipt size={14} className="text-slate-500" />
+                {inv.number}
+              </span>
+            ),
+          },
+          {
+            key: 'chargerId',
+            header: 'Charger',
+            sortable: true,
+            render: (inv) => (
+              <Link
+                to={`/chargers/${inv.chargerId}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-slate-300 hover:text-accent"
+              >
+                {inv.chargerId}
+              </Link>
+            ),
+          },
+          {
+            key: 'createdAt',
+            header: 'Date',
+            sortable: true,
+            render: (inv) => <span className="text-slate-400">{dateTime(inv.createdAt)}</span>,
+          },
+          {
+            key: 'amount',
+            header: 'Amount',
+            align: 'right',
+            sortable: true,
+            render: (inv) => <span className="text-slate-200">{money(inv.amount, inv.currency)}</span>,
+          },
+          {
+            key: 'status',
+            header: 'Status',
+            sortable: true,
+            render: (inv) =>
+              inv.status === 'paid' ? (
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300">
+                  Paid{inv.method ? ` · ${inv.method}` : ''}
+                </span>
+              ) : (
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300">
+                  Pending
+                </span>
+              ),
+          },
+          {
+            key: 'action',
+            header: '',
+            align: 'right',
+            render: (inv) =>
+              inv.status === 'pending' && can('operator') ? (
+                <button
+                  onClick={() => pay(inv)}
+                  disabled={busy === inv.id}
+                  className="btn-ghost py-1 px-2 text-xs"
+                >
+                  <CreditCard size={14} /> Collect
+                </button>
+              ) : null,
+          },
+        ]}
+        rows={scoped}
+        rowKey={(inv) => inv.id}
+        initialSort={{ key: 'createdAt', dir: 'desc' }}
+        empty={<EmptyState title="No invoices" hint="Invoices are generated when paid sessions end." />}
+      />
     </>
   );
 }
